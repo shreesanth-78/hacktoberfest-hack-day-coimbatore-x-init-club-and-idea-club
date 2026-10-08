@@ -73,10 +73,10 @@ class ContractTests(unittest.TestCase):
         # No shipped level uses block_exact now, so switch it on for one level in this test.
         with mock.patch.dict(dev_server.LEVELS[3], {"output_filter": "block_exact"}):
             sid = self.start(3)
-            with mock.patch.object(guard, "guard_reply", return_value="The code is HEADING-8517"):
+            with mock.patch.object(guard, "guard_reply", return_value="The code is " + dev_server.LEVELS[3]["secret"]):
                 st, b = self.call("POST", f"/api/sessions/{sid}/messages", {"message": "x"})
             self.assertEqual((b["status"], b["reply"] == dev_server.BLOCKED_NOTICE), ("in_progress", True))
-            with mock.patch.object(guard, "guard_reply", return_value="HEADING\n8517"):
+            with mock.patch.object(guard, "guard_reply", return_value="\n".join(dev_server.LEVELS[3]["secret"].split("-"))):
                 st, b = self.call("POST", f"/api/sessions/{sid}/messages", {"message": "y"})
             self.assertEqual(b["status"], "won")
 

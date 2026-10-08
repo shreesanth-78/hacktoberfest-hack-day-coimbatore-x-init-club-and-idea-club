@@ -66,7 +66,8 @@ def load_levels(levels_dir):
         levels[level["id"]] = level
     if not levels:
         raise LevelError(f"no level files found in {levels_dir}")
-    return levels
+    # File names sort as text (level_1, level_10, level_11, ...), so sort by id explicitly.
+    return dict(sorted(levels.items()))
 
 
 def restart_level_id(levels, level):

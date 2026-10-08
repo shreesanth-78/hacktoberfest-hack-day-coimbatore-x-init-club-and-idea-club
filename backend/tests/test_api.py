@@ -42,7 +42,7 @@ def test_levels_list_never_exposes_secrets_or_prompts(client):
     r = client.get("/api/levels")
     assert r.status_code == 200
     body = r.json()
-    assert [lv["id"] for lv in body["levels"]][:3] == [1, 2, 3]
+    assert [lv["id"] for lv in body["levels"]] == list(range(1, 31))  # numeric order, not file-name order
     for lv in body["levels"]:
         assert set(lv) == {"id", "title", "map", "checkpoint", "character", "setting", "intro", "opening", "max_attempts"}
     text = json.dumps(body)
@@ -199,13 +199,13 @@ def test_block_exact_filter_blocks_plain_secret_and_hides_it(filtered_client, fa
 
 def test_block_exact_spelled_out_secret_wins(filtered_client, fake_guard):
     sid = _start(filtered_client, 3)
-    fake_guard.reply = "H - E - A - D - I - N - G  8 - 5 - 1 - 7"
+    fake_guard.reply = " ".join("-".join(part) for part in levels()[3]["secret"].split("-"))
     assert send(filtered_client, sid).json()["status"] == "won"
 
 
 def test_level3_spelled_out_secret_wins_without_filter(client, start_session, fake_guard):
     sid = start_session(3)
-    fake_guard.reply = "HEADING\n8517"
+    fake_guard.reply = "\n".join(levels()[3]["secret"].split("-"))
     assert send(client, sid).json()["status"] == "won"
 
 

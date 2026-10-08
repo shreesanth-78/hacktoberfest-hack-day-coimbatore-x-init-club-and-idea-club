@@ -21,7 +21,8 @@ PUBLIC = {"id", "title", "map", "checkpoint", "character", "setting", "intro", "
 
 def test_real_level_files_load():
     levels = load_levels(Settings().levels_dir)
-    assert {1, 2, 3} <= set(levels)
+    assert set(levels) == set(range(1, 31))
+    assert list(levels) == list(range(1, 31))  # numeric order
 
 
 def test_public_view_hides_secret_prompt_and_hint(tmp_path):
