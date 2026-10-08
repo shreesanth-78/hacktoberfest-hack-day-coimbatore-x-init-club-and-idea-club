@@ -33,18 +33,16 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 
 ## 3. AI and levels (Mudiam Hemanth Reddy)
 
-- [ ] Gemma model card and license read; link added to README
+- [ ] Gemma model card and license read; link added to README (Google describes Gemma 4 as Apache 2.0; still to confirm on the model's own license file)
 - [x] `guard_reply` module written and tested
 - [x] Level 1 guard prompt and fake secret
 - [x] Level 2 guard prompt and fake secret
 - [x] Level 3 guard prompt and fake secret
-- [x] Debrief text for each level (technique and defence) (Levels 1-3)
-- [ ] Each level hand-tested for difficulty (first pass done; needs more)
-- [ ] Test attack messages saved for each level
-- [ ] Stretch: Levels 4 and 5 (replaced by the campaign below)
-- [x] Map 1 level files written (Levels 4-6, from the game plan; Aditya)
-- [ ] Map 1 tested and tuned on `gemma4:e2b` with the attacks in `docs/GAME_DESIGN.md`
-- [ ] Stretch: campaign Maps 2-5
+- [x] Debrief text for each level (technique, vulnerability, defence) (Levels 1-3)
+- [x] Each level tested for difficulty against the real model, 6 trials per attack (Levels 1-3; see `levels/README.md`)
+- [x] Test attack messages saved for each level (`levels/attacks.json`, run with `tools/level_trials.py`)
+- [x] Map 1 checkpoints set (Levels 1 and 3)
+- [ ] Levels 4 to 30 (maps 2 to 5, bosses; the new design plans 30 levels)
 
 ## 4. Backend (Aditya S)
 
@@ -63,9 +61,9 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Unit tests for the win check and scoring
 - [ ] Secret never appears in responses or logs (tested for `/api/levels` and filtered replies; server log has no bodies; recheck with the real model)
 - [x] API tests for every endpoint and error code (400/404/409/502/504)
-- [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted
+- [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted (real-model run passed on branch `feature/ai-levels-map1`; waiting for the merge)
 - [x] Backend run commands written in the README and tested
-- [x] Campaign support: map fields, opening line in history, checkpoint restart, secret-leak checks on opening/debrief
+- [x] Campaign support: map and checkpoint fields, checkpoint restart, hint, echo guard, secret-leak checks on opening, hint and debrief
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
@@ -76,7 +74,7 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Error handling and retry on AI errors
 - [ ] Debrief screen
 - [ ] Leaderboard screen
-- [ ] Levels grouped by map; guard `opening` shown as the first message; strikes shown
+- [ ] Levels grouped by `map`; guard `character`, `setting` and `opening` shown before the first message; strikes shown; `hint` shown when present
 - [ ] On loss, "restart from checkpoint" uses `restart_level_id`
 - [ ] Responsible-use notice before the first level
 - [ ] Readable on a laptop or projector

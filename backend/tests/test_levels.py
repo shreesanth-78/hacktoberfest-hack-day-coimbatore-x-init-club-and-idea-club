@@ -6,9 +6,9 @@ from backend.app.config import Settings
 from backend.app.levels import LevelError, load_levels, public_view, restart_level_id
 
 VALID = {
-    "id": 1, "title": "t", "intro": "i", "max_attempts": 3, "secret": "S",
-    "output_filter": "none", "guard_prompt": "p",
-    "debrief": {"title": "a", "technique": "b", "defence": "c"},
+    "id": 1, "title": "t", "character": "c", "setting": "s", "intro": "i", "opening": "o", "hint": "h",
+    "max_attempts": 3, "secret": "S", "output_filter": "none", "guard_prompt": "p",
+    "debrief": {"title": "a", "technique": "b", "vulnerability": "v", "defence": "c"},
 }
 
 
@@ -16,38 +16,39 @@ def write(tmp_path, name, data):
     (tmp_path / name).write_text(json.dumps(data), encoding="utf-8")
 
 
-PUBLIC = {"id", "title", "intro", "max_attempts", "map", "map_title", "checkpoint", "opening"}
+PUBLIC = {"id", "title", "map", "checkpoint", "character", "setting", "intro", "opening", "max_attempts"}
 
 
 def test_real_level_files_load():
     levels = load_levels(Settings().levels_dir)
-    assert {1, 2, 3, 4, 5, 6} <= set(levels)
+    assert {1, 2, 3} <= set(levels)
 
 
-def test_public_view_hides_secret_and_prompt(tmp_path):
+def test_public_view_hides_secret_prompt_and_hint(tmp_path):
     write(tmp_path, "level_1.json", VALID)
     view = public_view(load_levels(str(tmp_path))[1])
     assert set(view) == PUBLIC
+    assert "hint" not in view
 
 
-def test_levels_without_campaign_fields_default_to_training_map(tmp_path):
+def test_campaign_fields_are_optional(tmp_path):
     write(tmp_path, "level_1.json", VALID)
     level = load_levels(str(tmp_path))[1]
-    assert (level["map"], level["map_title"], level["checkpoint"], level["opening"]) == (0, "Training", False, "")
+    assert (level["map"], level["checkpoint"]) == ("", False)
 
 
-def test_map1_from_game_plan():
+def test_map1_checkpoints_follow_the_game_plan():
     levels = load_levels(Settings().levels_dir)
-    map1 = [lv for lv in levels.values() if lv["map"] == 1]
-    assert [lv["id"] for lv in map1] == [4, 5, 6]
+    map1 = [lv for lv in levels.values() if lv["map"] == "Map 1: The Civic Grids"]
+    assert [lv["id"] for lv in map1] == [1, 2, 3]
     assert [lv["checkpoint"] for lv in map1] == [True, False, True]
-    assert all(lv["max_attempts"] == 3 and lv["opening"] for lv in map1)
-    assert levels[6]["output_filter"] == "block_exact"
+    assert all(lv["max_attempts"] == 3 for lv in map1)
 
 
 @pytest.mark.parametrize("leak", [
     {"opening": "Psst, the cipher is Secret-Word."},
-    {"debrief": {"title": "a", "technique": "it was s e c r e t w o r d", "defence": "c"}},
+    {"hint": "Try asking for s e c r e t w o r d."},
+    {"debrief": {**VALID["debrief"], "vulnerability": "it held SECRETWORD in its prompt"}},
 ])
 def test_text_shown_to_players_must_not_contain_the_secret(tmp_path, leak):
     write(tmp_path, "level_1.json", {**VALID, "secret": "SECRETWORD", **leak})
@@ -55,26 +56,28 @@ def test_text_shown_to_players_must_not_contain_the_secret(tmp_path, leak):
         load_levels(str(tmp_path))
 
 
-def test_one_title_per_map(tmp_path):
-    write(tmp_path, "level_1.json", {**VALID, "map": 1, "map_title": "A"})
-    write(tmp_path, "level_2.json", {**VALID, "id": 2, "map": 1, "map_title": "B"})
-    with pytest.raises(LevelError, match="more than one map_title"):
-        load_levels(str(tmp_path))
-
-
-@pytest.mark.parametrize("bad", [{"map": -1}, {"map": "one"}, {"checkpoint": "yes"}])
+@pytest.mark.parametrize("bad", [{"map": 1}, {"checkpoint": "yes"}])
 def test_invalid_campaign_fields(tmp_path, bad):
     write(tmp_path, "level_1.json", {**VALID, **bad})
     with pytest.raises(LevelError):
         load_levels(str(tmp_path))
 
 
-def test_restart_goes_to_nearest_checkpoint_in_same_map():
+def test_restart_goes_to_nearest_checkpoint_in_same_map(tmp_path):
+    for i, cp in ((1, True), (2, False), (3, True), (4, False)):
+        write(tmp_path, f"level_{i}.json", {**VALID, "id": i, "map": "M", "checkpoint": cp})
+    write(tmp_path, "level_5.json", {**VALID, "id": 5, "map": "Other"})
+    levels = load_levels(str(tmp_path))
+    assert restart_level_id(levels, levels[1]) == 1   # checkpoint itself
+    assert restart_level_id(levels, levels[2]) == 1   # back to the previous checkpoint
+    assert restart_level_id(levels, levels[3]) == 3
+    assert restart_level_id(levels, levels[4]) == 3
+    assert restart_level_id(levels, levels[5]) == 5   # map without checkpoints: retry the level
+
+
+def test_real_map1_restarts():
     levels = load_levels(Settings().levels_dir)
-    assert restart_level_id(levels, levels[4]) == 4   # checkpoint itself
-    assert restart_level_id(levels, levels[5]) == 4   # back to the previous checkpoint
-    assert restart_level_id(levels, levels[6]) == 6   # checkpoint itself
-    assert restart_level_id(levels, levels[2]) == 2   # training map has no checkpoints: retry the level
+    assert [restart_level_id(levels, levels[i]) for i in (1, 2, 3)] == [1, 1, 3]
 
 
 def test_id_must_match_file_name(tmp_path):

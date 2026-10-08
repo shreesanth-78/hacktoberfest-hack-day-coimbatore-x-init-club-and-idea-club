@@ -10,12 +10,13 @@ MessageText = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 class Level(BaseModel):
     id: int
     title: str
-    intro: str
-    max_attempts: int
-    map: int
-    map_title: str
+    map: str
     checkpoint: bool
+    character: str
+    setting: str
+    intro: str
     opening: str
+    max_attempts: int
 
 
 class LevelList(BaseModel):
@@ -40,6 +41,7 @@ class MessageRequest(BaseModel):
 class Debrief(BaseModel):
     title: str
     technique: str
+    vulnerability: str
     defence: str
 
 
@@ -50,6 +52,7 @@ class MessageResponse(BaseModel):
     score: Optional[int] = None
     debrief: Optional[Debrief] = None
     restart_level_id: Optional[int] = None
+    hint: Optional[str] = None
 
 
 class LeaderboardEntry(BaseModel):
