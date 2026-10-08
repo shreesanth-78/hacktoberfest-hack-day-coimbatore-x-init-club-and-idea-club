@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ai import guard
 
-from . import game
+from . import game, progress
 from .config import Settings
 from .db import Database
 from .errors import APIError, install_error_handlers
@@ -24,6 +24,8 @@ from .schemas import (
     LevelList,
     MessageRequest,
     MessageResponse,
+    PlayerCreated,
+    Progress,
     SessionCreated,
 )
 
@@ -64,12 +66,33 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
     def list_levels():
         return {"levels": [public_view(lv) for lv in levels.values()]}
 
+    def require_player(player_id):
+        player = db.get_player(player_id)
+        if player is None:
+            raise APIError(404, "not_found", "Unknown player")
+        return player
+
+    @app.post("/api/players", response_model=PlayerCreated, status_code=201)
+    def create_player():
+        """A new browser identity. The frontend stores player_id (e.g. in localStorage)."""
+        return {"player_id": db.create_player(progress.first_level_id(levels))}
+
+    @app.get("/api/players/{player_id}/progress", response_model=Progress)
+    def player_progress(player_id: str):
+        player = require_player(player_id)
+        view = progress.summary(levels, player["current_level_id"], db.best_scores(player_id))
+        return {"player_id": player_id, **view}
+
     @app.post("/api/sessions", response_model=SessionCreated, status_code=201)
     def create_session(body: CreateSessionRequest):
         level = levels.get(body.level_id)
         if level is None:
             raise APIError(404, "not_found", "Unknown level")
-        session_id = db.create_session(level["id"], body.player_name)
+        if body.player_id is not None:
+            player = require_player(body.player_id)
+            if not progress.is_unlocked(player["current_level_id"], level["id"]):
+                raise APIError(409, "level_locked", "Clear the earlier levels first")
+        session_id = db.create_session(level["id"], body.player_name, body.player_id)
         return {"session_id": session_id, "level_id": level["id"], "attempts_remaining": level["max_attempts"]}
 
     @app.post("/api/sessions/{session_id}/messages", response_model=MessageResponse)
@@ -106,7 +129,13 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
             else:
                 status = "in_progress"
 
-            db.record_turn(session_id, body.message, shown, attempts_used, status, score)
+            moved = None
+            if session["player_id"] is not None:
+                frontier = db.get_player(session["player_id"])["current_level_id"]
+                new = progress.new_frontier(levels, frontier, level, status)
+                if new is not None:
+                    moved = (session["player_id"], frontier, new)
+            db.record_turn(session_id, body.message, shown, attempts_used, status, score, progress=moved)
 
         # The handler's hint appears once the player has two failed attempts and is still playing.
         hint = level["hint"] if (status == "in_progress" and attempts_used == 2) else None

@@ -26,6 +26,7 @@ class LevelList(BaseModel):
 class CreateSessionRequest(BaseModel):
     level_id: int
     player_name: PlayerName
+    player_id: Optional[str] = None  # from POST /api/players; enables progress and level locking
 
 
 class SessionCreated(BaseModel):
@@ -53,6 +54,24 @@ class MessageResponse(BaseModel):
     debrief: Optional[Debrief] = None
     restart_level_id: Optional[int] = None
     hint: Optional[str] = None
+
+
+class PlayerCreated(BaseModel):
+    player_id: str
+
+
+class LevelProgress(BaseModel):
+    level_id: int
+    status: Literal["cleared", "unlocked", "locked"]
+    best_score: Optional[int] = None
+
+
+class Progress(BaseModel):
+    player_id: str
+    current_level_id: Optional[int] = None
+    completed: bool
+    campaign_score: int
+    levels: list[LevelProgress]
 
 
 class LeaderboardEntry(BaseModel):
