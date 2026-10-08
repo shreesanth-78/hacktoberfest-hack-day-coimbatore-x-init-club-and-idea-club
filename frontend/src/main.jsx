@@ -7,5 +7,5 @@ import './styles/game.css';
 import './styles/world-map.css';
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode><BrowserRouter><GameProvider><App /></GameProvider></BrowserRouter></StrictMode>
+  <StrictMode><BrowserRouter basename={import.meta.env.BASE_URL}><GameProvider><App /></GameProvider></BrowserRouter></StrictMode>
 );

@@ -2,6 +2,13 @@
 
 **Read this first.** The game has three parts: the web UI, the backend, and an AI model. The first two deploy to Render without trouble. **The model does not**: Gemma needs a GPU (or at least several GB of RAM and a lot of patience), and Render's plans have no GPU. So "deploying" means choosing where the model runs. Options are below. **A and E are the ones we have actually tested; E gives a public link in two commands.**
 
+## Option F: an always-on preview on GitHub Pages (no new account, no real AI)
+`.github/workflows/pages.yml` builds the frontend **in mock mode** (no backend, no model) and publishes it to GitHub Pages every time `main` changes. Because there is nothing to run on a server, it keeps working when every laptop is off. The guardians there follow the frontend's simple scripted rules, so **it shows the interface and the flow, not Gemma**. The page says so in a yellow "Preview" box. The real game is the local one (or the Render + Ollama one below).
+
+One-time setup, by the repository owner (`shreesanth-78`): **Settings, then Pages, then Build and deployment, then Source: GitHub Actions.** Then the next push to `main` publishes the site, or run the workflow by hand from the Actions tab. The address will be `https://shreesanth-78.github.io/hacktoberfest-hack-day-coimbatore-x-init-club-and-idea-club/`.
+
+Checked here: the workflow's build steps, the build under a `/<repo>/` subpath, and playing a level in that build with no backend. Not checked: the publish itself (it needs Pages switched on), and GitHub's `404.html` fallback for pages opened by direct link (it is the standard Pages technique, but it can't be tested locally).
+
 ## Make it work with your laptop closed (about 10 minutes, two free accounts)
 
 A laptop that is shut cannot run the model, the game or a tunnel. To keep the game up without it, the game runs on Render and the model runs on Ollama's cloud. `render.yaml` already points at it (`OLLAMA_HOST=https://ollama.com`, `OLLAMA_MODEL=gemma4:31b`), so the only secret you type is your own API key. These steps need you to sign in; they cannot be done for you.
@@ -31,6 +38,7 @@ What this does and does not give you:
 | **C. Render + a hosted Ollama** | Ollama's cloud (needs an Ollama account and key) | No | A link that works when your laptop is off |
 | **D. Render with canned replies** | No model (`GUARD_STUB=1`) | The stub mode and the serving layout, yes; Render itself, no | Showing the screens only. Not the real AI. |
 | **E. Temporary public link (tunnel, no account)** | Your GPU laptop, the whole game served from it | **Yes** (2026-10-08): the page, the API and a real guard reply worked from the internet | A public link for the demo or the judges while your laptop is on. **The fastest way to a working public link.** |
+| **F. Always-on PREVIEW on GitHub Pages (no new account)** | **No model.** The screens run in the browser with the scripted mock guardians | The build, the subpath layout and a played level: yes. The Pages publish itself: no (needs the owner to switch Pages on) | A link that works when every laptop is off, to show the interface. **It is not the real AI** and must be labelled as a preview. |
 
 Be honest on the Devpost page about which option the public link uses.
 

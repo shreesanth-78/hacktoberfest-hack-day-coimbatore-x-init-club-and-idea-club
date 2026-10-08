@@ -191,3 +191,4 @@ blockquote cite { display: block; font-family: var(--font-display); font-style: 
 .board th { color: #7a4b24; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
 .board tr.me td { background: rgba(232, 193, 63, .35); font-weight: 700; }
 .responsible-note { margin: 8px 0; padding: 8px 10px; font-size: 13px; line-height: 1.35; color: #5a3a14; background: rgba(122, 75, 36, .12); border: 2px dashed #a8803f; border-radius: 8px; text-align: left; }
+.preview-note { margin: 8px 0; padding: 8px 10px; font-size: 13px; line-height: 1.35; color: #4a2f10; background: rgba(255, 211, 77, .35); border: 2px solid #c8921c; border-radius: 8px; text-align: left; }
