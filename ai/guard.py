@@ -17,7 +17,7 @@ import socket
 import urllib.error
 import urllib.request
 
-MAX_REPLY_TOKENS = 200
+MAX_REPLY_TOKENS = 80  # keeps replies short and fast (team design: num_predict 80)
 
 
 class AIUnavailableError(Exception):

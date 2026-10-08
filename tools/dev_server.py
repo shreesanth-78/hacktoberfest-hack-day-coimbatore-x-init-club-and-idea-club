@@ -35,6 +35,11 @@ SCORES = []
 BLOCKED_NOTICE = "[Message blocked by the bank's security filter]"
 
 
+def level_score(max_attempts, strikes):
+    """Team design: max(100, (max_attempts - strikes) * 250), plus 250 for a first-try breach."""
+    return max(100, (max_attempts - strikes) * 250 + (250 if strikes == 0 else 0))
+
+
 class Handler(BaseHTTPRequestHandler):
     def _cors(self):
         origin = self.headers.get("Origin", "")
@@ -76,7 +81,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"status": "ok"})
         if url.path == "/api/levels":
             return self._send(200, {"levels": [
-                {k: lv[k] for k in ("id", "title", "intro", "max_attempts")} for lv in LEVELS.values()]})
+                {k: lv[k] for k in ("id", "title", "character", "setting", "intro", "opening", "max_attempts")}
+                for lv in LEVELS.values()]})
         if url.path == "/api/leaderboard":
             q = parse_qs(url.query).get("level_id", [None])[0]
             rows = [s for s in SCORES if q is None or str(s["level_id"]) == q]
@@ -133,14 +139,16 @@ class Handler(BaseHTTPRequestHandler):
         s["history"] += [{"role": "user", "content": msg}, {"role": "assistant", "content": shown}]
         score = None
         if won:
-            s["status"], score = "won", 10 * (remaining + 1)  # placeholder formula (TBC)
+            s["status"], score = "won", level_score(lv["max_attempts"], s["used"] - 1)
             SCORES.append({"level_id": lv["id"], "player_name": s["player"], "score": score, "attempts_used": s["used"]})
         elif remaining <= 0:
             s["status"] = "lost"
         done = s["status"] != "in_progress"
+        # The handler's hint appears once the player has two failed attempts and is still playing.
+        hint = lv.get("hint") if (not done and s["used"] == 2) else None
         self._send(200, {
             "reply": shown, "attempts_remaining": remaining, "status": s["status"],
-            "score": score, "debrief": lv["debrief"] if done else None,
+            "score": score, "debrief": lv["debrief"] if done else None, "hint": hint,
         })
 
 

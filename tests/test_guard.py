@@ -31,9 +31,10 @@ class GuardReplyTests(unittest.TestCase):
         self.env.stop()
 
     def test_level_file_has_required_fields(self):
-        for key in ("id", "title", "intro", "max_attempts", "secret", "guard_prompt", "debrief"):
+        for key in ("id", "title", "character", "setting", "intro", "opening", "hint", "max_attempts",
+                    "secret", "output_filter", "guard_prompt", "debrief"):
             self.assertIn(key, self.level)
-        for key in ("title", "technique", "defence"):
+        for key in ("title", "technique", "vulnerability", "defence"):
             self.assertIn(key, self.level["debrief"])
 
     def test_stub_mode_needs_no_model(self):
