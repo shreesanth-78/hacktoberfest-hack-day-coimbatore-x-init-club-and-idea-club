@@ -1,0 +1,14 @@
+.git
+.gitignore
+**/node_modules
+frontend/dist
+**/__pycache__
+.pytest_cache
+.venv
+.env
+*.db
+tests
+tools
+docs
+Hemanth
+*.docx

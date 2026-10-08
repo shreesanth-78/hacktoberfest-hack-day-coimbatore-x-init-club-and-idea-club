@@ -1,0 +1,28 @@
+# Render Blueprint: ONE web service that serves the whole game (the built frontend in frontend/dist and the API).
+# No Docker needed: Render's native Python runtime installs the backend and runs it.
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repository. Step by step: docs/DEPLOY.md.
+#
+# IMPORTANT: Render has no GPU, so the Gemma model cannot run on it. The service needs an Ollama server to
+# call. Set OLLAMA_HOST (and OLLAMA_API_KEY if it needs one) and OLLAMA_MODEL below, or set GUARD_STUB=1 to
+# show the screens with canned guard replies. See docs/DEPLOY.md for the options.
+services:
+  - type: web
+    name: prompt-heist
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:create_app --factory --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: OLLAMA_HOST        # e.g. https://ollama.com (hosted) or the https address of your own Ollama
+        sync: false
+      - key: OLLAMA_API_KEY     # only for a hosted Ollama that needs a key. Never commit it.
+        sync: false
+      - key: OLLAMA_MODEL       # e.g. gemma4:e2b on your own Ollama
+        sync: false
+      - key: OLLAMA_TIMEOUT_SECONDS
+        value: "90"
+      - key: DATABASE_PATH      # free instances have no persistent disk: scores reset on every deploy or restart
+        value: /tmp/prompt_heist.db

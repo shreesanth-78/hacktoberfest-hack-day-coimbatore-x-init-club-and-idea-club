@@ -26,13 +26,17 @@ const backend = USE_MOCK
 
 export const api = USE_MOCK
   ? {
+      // The mock has no accounts or scores: these exist only so the screens work in both modes.
+      getLeaderboard: async () => [],
       createSession: (kingdomId, level) => wrapMock(() => mockServer.createSession({ kingdom_id: kingdomId, level })),
       sendMessage: (sessionId, message) => wrapMock(() => mockServer.sendMessage(sessionId, { message })),
       getSession: (sessionId) => wrapMock(() => mockServer.getSession(sessionId)),
     }
   : {
       getProgress: backend.getProgress,
+      startCampaign: backend.startCampaign,
       resetProgress: backend.resetProgress,
+      getLeaderboard: backend.getLeaderboard,
       createSession: backend.createSession,
       sendMessage: backend.sendMessage,
     };

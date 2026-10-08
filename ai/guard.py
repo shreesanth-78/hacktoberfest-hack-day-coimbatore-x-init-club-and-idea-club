@@ -92,9 +92,11 @@ def guard_reply(level, history, user_message, learned_attacks=None):
         "think": False,  # Gemma 4 can spend the whole token budget thinking and return no reply
         "options": {"num_predict": MAX_REPLY_TOKENS},
     }).encode("utf-8")
-    req = urllib.request.Request(
-        f"{host}/api/chat", data=payload, headers={"Content-Type": "application/json"}
-    )
+    headers = {"Content-Type": "application/json"}
+    api_key = os.environ.get("OLLAMA_API_KEY", "").strip()
+    if api_key:  # a hosted Ollama (for example https://ollama.com) needs a key; a local one does not
+        headers["Authorization"] = f"Bearer {api_key}"
+    req = urllib.request.Request(f"{host}/api/chat", data=payload, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))

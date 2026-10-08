@@ -58,6 +58,15 @@ export function GameProvider({ children }) {
   const value = useMemo(() => ({
     progress: state.progress,
     ready, error, campaign, refresh,
+    // Has a game been started? With the real backend that means a saved campaign exists (the mock needs none).
+    hasGame: USE_MOCK ? true : Boolean(campaign),
+    playerName: USE_MOCK ? (state.player || '') : (campaign?.player_name || ''),
+    // Begin a game under a chosen name. Throws with a readable message if the name or the backend is rejected.
+    startGame: async (name) => {
+      if (USE_MOCK) { setState((s) => ({ ...s, player: String(name || '').trim() })); return; }
+      await api.startCampaign(name);
+      await refresh();
+    },
     isKingdomUnlocked,
     levelStatus,
     checkpointReached: (id) => state.progress[id].completed >= GAME_CONFIG.checkpointLevel,
@@ -87,7 +96,7 @@ export function GameProvider({ children }) {
       try { await api.resetProgress(); } catch (e) { setError(e.message); return; }
       await refresh();
     },
-  }), [state, ready, error, campaign, refresh, isKingdomUnlocked, levelStatus]);
+  }), [state, ready, error, campaign, refresh, isKingdomUnlocked, levelStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

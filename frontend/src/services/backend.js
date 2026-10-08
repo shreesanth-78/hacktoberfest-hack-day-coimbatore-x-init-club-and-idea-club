@@ -19,7 +19,7 @@ export class ApiError extends Error {
 
 export const LEVELS_PER_KINGDOM = 6;
 const CAMPAIGN_KEY = 'prompt-heist-campaign-v1';
-const DEFAULT_PLAYER = 'Cipher Phantom';
+export const MAX_NAME = 30; // same limit as the backend (player_name: 1 to 30 characters)
 
 // Texts from the game design for the two AI failure cases. The backend never charges a life for them.
 const FRIENDLY = {
@@ -73,7 +73,7 @@ function adaptationFor(mode) {
   };
 }
 
-export function createBackendClient({ baseUrl = '', fetchImpl, storage, playerName = DEFAULT_PLAYER } = {}) {
+export function createBackendClient({ baseUrl = '', fetchImpl, storage } = {}) {
   const doFetch = fetchImpl || ((...args) => fetch(...args));
   const store = {
     get() { try { return storage?.getItem(CAMPAIGN_KEY) || null; } catch { return null; } },
@@ -103,17 +103,23 @@ export function createBackendClient({ baseUrl = '', fetchImpl, storage, playerNa
 
   const getLevels = () => (levelsPromise ||= request('/api/levels').then((b) => b.levels).catch((e) => { levelsPromise = null; throw e; }));
 
+  // The saved campaign, or null when there is none (first visit, or the server no longer knows it).
+  // A campaign is only ever CREATED by startCampaign(name), after the player has chosen a name.
   async function loadCampaign() {
     const id = store.get();
-    if (id) {
-      try { return await request(`/api/campaigns/${encodeURIComponent(id)}`); } catch (e) { if (e.status !== 404) throw e; }
+    if (!id) return null;
+    try { return await request(`/api/campaigns/${encodeURIComponent(id)}`); } catch (e) {
+      if (e.status === 404) { store.clear(); return null; }
+      throw e;
     }
-    const created = await request('/api/campaigns', { method: 'POST', body: JSON.stringify({ player_name: playerName }) });
-    store.set(created.campaign_id);
-    return created;
   }
-  // Calls that overlap (React StrictMode runs effects twice) share one request, so only one campaign is created.
+  // Calls that overlap (React StrictMode runs effects twice) share one request.
   const campaign = () => (campaignInflight ||= loadCampaign().finally(() => { campaignInflight = null; }));
+  const needCampaign = async () => {
+    const c = await campaign();
+    if (!c) throw new ApiError('Begin a new game first: choose your name on the title screen.', { code: 'no_campaign' });
+    return c;
+  };
 
   function view(meta, remaining, extra = {}) {
     const used = meta.max - remaining;
@@ -125,17 +131,31 @@ export function createBackendClient({ baseUrl = '', fetchImpl, storage, playerNa
   }
 
   return {
+    /** The saved campaign and the progress derived from it; state is null before a game has been started. */
     getProgress: async () => {
       const state = await campaign();
-      return { state, progress: progressFromCampaign(state) };
+      return { state, progress: progressFromCampaign(state || { status: 'in_progress', current_level_id: 1 }) };
     },
 
-    /** Start over with a brand-new campaign (the old one stays on the server and the leaderboard). */
-    resetProgress: async () => { store.clear(); return campaign(); },
+    /** Begin a new campaign for this player. The name must be 1 to 30 characters (the backend checks it too). */
+    startCampaign: async (name) => {
+      const clean = String(name || '').trim();
+      if (clean.length < 1 || clean.length > MAX_NAME) throw new ApiError(`Choose a name of 1 to ${MAX_NAME} characters.`, { code: 'invalid_request', status: 400 });
+      const created = await request('/api/campaigns', { method: 'POST', body: JSON.stringify({ player_name: clean }) });
+      store.set(created.campaign_id);
+      return created;
+    },
+
+    /** Forget the saved campaign (it stays on the server and on the leaderboard). The next game needs a new name. */
+    resetProgress: async () => { store.clear(); },
+
+    /** Top campaigns by total score. */
+    getLeaderboard: async () => (await request('/api/campaigns/leaderboard')).entries,
 
     createSession: async (kingdomId, n) => {
       const lid = backendLevelId(kingdomId, n);
-      const [state, levels] = await Promise.all([campaign(), getLevels()]);
+      const [state, levels] = await Promise.all([needCampaign(), getLevels()]);
+      const playerName = state.player_name;
       const level = levels.find((l) => l.id === lid);
       if (!level) throw new ApiError('That gate is missing from the kingdom.');
       let created;

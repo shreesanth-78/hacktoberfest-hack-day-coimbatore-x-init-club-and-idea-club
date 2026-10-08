@@ -66,39 +66,64 @@ test('mapDebrief keeps the four fields the scroll shows', () => {
   assert.ok(d.why);
 });
 
-test('a new player gets a campaign, which is remembered', async () => {
+test('a first visit has no campaign and creates none; choosing a name creates one, which is remembered', async () => {
   const storage = memoryStorage();
   const { fetchImpl, calls } = fakeBackend({
     'POST /api/campaigns': (b) => [201, campaignState(1, { player_name: b.player_name })],
   });
   const client = createBackendClient({ fetchImpl, storage });
-  const { state, progress } = await client.getProgress();
-  assert.equal(state.campaign_id, 'c1');
-  assert.equal(progress.civic.completed, 0);
+  const first = await client.getProgress();
+  assert.equal(first.state, null);
+  assert.equal(first.progress.civic.completed, 0);
+  assert.equal(calls.length, 0); // nothing was created behind the player's back
+  const state = await client.startCampaign('  Aria  ');
+  assert.equal(state.player_name, 'Aria'); // trimmed
   assert.equal(storage.getItem('prompt-heist-campaign-v1'), 'c1');
-  assert.equal(calls.length, 1);
+  assert.deepEqual(calls.map((c) => c.body?.player_name), ['Aria']);
 });
 
-test('two overlapping loads create only one campaign', async () => {
-  const { fetchImpl, calls } = fakeBackend({ 'POST /api/campaigns': () => [201, campaignState(1)] });
+test('a name must be 1 to 30 characters', async () => {
+  const { fetchImpl, calls } = fakeBackend({});
   const client = createBackendClient({ fetchImpl, storage: memoryStorage() });
-  await Promise.all([client.getProgress(), client.getProgress()]);
-  assert.equal(calls.filter((c) => c.key === 'POST /api/campaigns').length, 1);
+  await assert.rejects(client.startCampaign(''), /1 to 30/);
+  await assert.rejects(client.startCampaign('   '), /1 to 30/);
+  await assert.rejects(client.startCampaign('x'.repeat(31)), /1 to 30/);
+  assert.equal(calls.length, 0);
 });
 
-test('a saved campaign is resumed, and replaced if the server no longer knows it', async () => {
+test('two overlapping loads share one request', async () => {
+  const storage = memoryStorage();
+  storage.setItem('prompt-heist-campaign-v1', 'c1');
+  const { fetchImpl, calls } = fakeBackend({ 'GET /api/campaigns/c1': () => [200, campaignState(1)] });
+  const client = createBackendClient({ fetchImpl, storage });
+  await Promise.all([client.getProgress(), client.getProgress()]);
+  assert.equal(calls.filter((c) => c.key === 'GET /api/campaigns/c1').length, 1);
+});
+
+test('a saved campaign is resumed, and forgotten (not silently recreated) if the server no longer knows it', async () => {
   const storage = memoryStorage();
   storage.setItem('prompt-heist-campaign-v1', 'old');
-  const gone = fakeBackend({
-    'GET /api/campaigns/old': () => [404, { error: { code: 'not_found', message: 'Unknown campaign' } }],
-    'POST /api/campaigns': () => [201, campaignState(1, { campaign_id: 'new' })],
-  });
-  await createBackendClient({ fetchImpl: gone.fetchImpl, storage }).getProgress();
-  assert.equal(storage.getItem('prompt-heist-campaign-v1'), 'new');
+  const gone = fakeBackend({ 'GET /api/campaigns/old': () => [404, { error: { code: 'not_found', message: 'Unknown campaign' } }] });
+  const none = await createBackendClient({ fetchImpl: gone.fetchImpl, storage }).getProgress();
+  assert.equal(none.state, null);
+  assert.equal(storage.getItem('prompt-heist-campaign-v1'), null);
+  assert.equal(gone.calls.length, 1); // it did not create a replacement
 
+  storage.setItem('prompt-heist-campaign-v1', 'new');
   const kept = fakeBackend({ 'GET /api/campaigns/new': () => [200, campaignState(8, { campaign_id: 'new' })] });
   const { progress } = await createBackendClient({ fetchImpl: kept.fetchImpl, storage }).getProgress();
   assert.equal(progress.bio.completed, 1);
+});
+
+test('starting a gate without a game asks for a name first', async () => {
+  const { fetchImpl } = fakeBackend({ 'GET /api/levels': () => [200, { levels: LEVELS }] });
+  await assert.rejects(createBackendClient({ fetchImpl, storage: memoryStorage() }).createSession('civic', 1), /choose your name/);
+});
+
+test('the leaderboard is read from the campaign leaderboard endpoint', async () => {
+  const entries = [{ player_name: 'A', total_score: 9000, status: 'completed', levels_cleared: 30 }];
+  const { fetchImpl } = fakeBackend({ 'GET /api/campaigns/leaderboard': () => [200, { entries }] });
+  assert.deepEqual(await createBackendClient({ fetchImpl, storage: memoryStorage() }).getLeaderboard(), entries);
 });
 
 test('the current gate starts a campaign session and shows the level opening', async () => {
@@ -208,17 +233,19 @@ test('AI failures give the in-game texts, and a validation error gives the serve
 });
 
 test('a network failure and an unknown session give readable errors', async () => {
-  const client = createBackendClient({ fetchImpl: async () => { throw new TypeError('failed to fetch'); }, storage: memoryStorage() });
+  const saved = memoryStorage();
+  saved.setItem('prompt-heist-campaign-v1', 'c1');
+  const client = createBackendClient({ fetchImpl: async () => { throw new TypeError('failed to fetch'); }, storage: saved });
   await assert.rejects(client.getProgress(), /could not reach the kingdom/);
   const c2 = await sessionClient({ reply: 'x', attempts_remaining: 2, status: 'in_progress' });
   await assert.rejects(c2.sendMessage('nope', 'hi'), /no longer active/);
 });
 
-test('resetProgress forgets the saved campaign and starts a new one', async () => {
+test('resetProgress forgets the saved campaign and creates nothing', async () => {
   const storage = memoryStorage();
   storage.setItem('prompt-heist-campaign-v1', 'old');
-  const { fetchImpl } = fakeBackend({ 'POST /api/campaigns': () => [201, campaignState(1, { campaign_id: 'fresh' })] });
-  const state = await createBackendClient({ fetchImpl, storage }).resetProgress();
-  assert.equal(state.campaign_id, 'fresh');
-  assert.equal(storage.getItem('prompt-heist-campaign-v1'), 'fresh');
+  const { fetchImpl, calls } = fakeBackend({});
+  await createBackendClient({ fetchImpl, storage }).resetProgress();
+  assert.equal(storage.getItem('prompt-heist-campaign-v1'), null);
+  assert.equal(calls.length, 0);
 });

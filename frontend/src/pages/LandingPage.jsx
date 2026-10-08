@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { KINGDOMS } from '../data/kingdoms.js';
 import { useGame } from '../hooks/useGameState.jsx';
 import { USE_MOCK } from '../services/api.js';
@@ -8,7 +9,21 @@ import PlayerCharacter from '../components/PlayerCharacter.jsx';
 
 export default function LandingPage() {
   const game = useGame();
+  const nav = useNavigate();
   const started = Object.values(game.progress).some((p) => p.completed > 0);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const begin = async (e) => {
+    e.preventDefault();
+    const clean = name.trim();
+    if (!clean || busy) return;
+    setBusy(true); setErr('');
+    try { await game.startGame(clean); nav('/world'); } catch (ex) { setErr(ex.message); } finally { setBusy(false); }
+  };
+  const newGame = async () => {
+    if (window.confirm('Start a new game? Your current run stays on the leaderboard.')) await game.resetAll();
+  };
   const k = KINGDOMS[0];
   return (
     <main className="landing">
@@ -29,9 +44,25 @@ export default function LandingPage() {
         <p className="eyebrow">An Open-Source AI Hackathon Adventure</p>
         <h1>PROMPT HEIST</h1>
         <p className="lede">Travel through five ancient kingdoms. Outwit the guardians at six gates in each. Learn how clever words can break clumsy defences — and how real systems should guard their secrets.</p>
-        <div className="landing-actions">
-          <Link className="stone-btn big" to="/world">{started ? 'Continue Journey ›' : 'Begin the Adventure ›'}</Link>
-        </div>
+        {game.hasGame && game.playerName ? (
+          <div className="landing-actions">
+            <p className="welcome-back">Welcome back, <b>{game.playerName}</b>.</p>
+            <Link className="stone-btn big" to="/world">{started ? 'Continue Journey ›' : 'Begin the Adventure ›'}</Link>
+            <Link className="stone-btn" to="/leaderboard">🏆 Leaderboard</Link>
+            <button type="button" className="stone-btn" onClick={newGame}>New game</button>
+          </div>
+        ) : (
+          <form className="landing-actions name-form" onSubmit={begin}>
+            <label htmlFor="player-name">Your name, Phantom</label>
+            <input id="player-name" type="text" value={name} maxLength={30} autoComplete="off" placeholder="Cipher Phantom"
+              onChange={(e) => setName(e.target.value)} aria-describedby="name-error" />
+            {err && <p id="name-error" className="form-error" role="alert">{err}</p>}
+            <div className="landing-buttons">
+              <button type="submit" className="stone-btn big" disabled={!name.trim() || busy}>{busy ? 'Entering…' : 'Begin the Adventure ›'}</button>
+              <Link className="stone-btn" to="/leaderboard">🏆 Leaderboard</Link>
+            </div>
+          </form>
+        )}
         <ul className="landing-facts"><li>5 kingdoms</li><li>30 guarded levels</li><li>Checkpoint at Level 3</li><li>Adaptive boss at Level 6</li></ul>
         <small>{USE_MOCK ? 'Fictional game · mock guardians (no backend connected)' : 'Fictional game · guardians powered by Gemma, running locally through Ollama'}</small>
       </div>

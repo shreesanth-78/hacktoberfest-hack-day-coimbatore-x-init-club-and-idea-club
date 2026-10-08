@@ -4,12 +4,14 @@ and the campaign in docs/BACKEND_CAMPAIGN_SPEC.md.
 Run from the repository root:
     uvicorn backend.app.main:create_app --factory --port 8000
 """
+import os
 import threading
 from collections import defaultdict
 from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from ai import guard
 
@@ -36,6 +38,24 @@ from .schemas import (
 
 def _default_guard(level, history, user_message, learned_attacks=None):
     return guard.guard_reply(level, history, user_message, learned_attacks)
+
+
+def _serve_frontend(app, dist):
+    """Serve the built frontend (single-page app) from the same service, after all the /api routes."""
+    index = os.path.join(dist, "index.html") if dist else ""
+    if not (dist and os.path.isfile(index)):
+        return
+    root = os.path.realpath(dist)
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def frontend(path: str):
+        if path == "api" or path.startswith("api/"):
+            raise APIError(404, "not_found", "Unknown path")
+        candidate = os.path.realpath(os.path.join(root, path))
+        # Only files inside the dist folder are served; everything else is the app (client-side routing).
+        if path and candidate.startswith(root + os.sep) and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        return FileResponse(index)
 
 
 def create_app(settings: Optional[Settings] = None, guard_fn=None, ai_check=None) -> FastAPI:
@@ -263,4 +283,5 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None, ai_check=None
     def leaderboard(level_id: Optional[int] = None):
         return {"entries": db.leaderboard(level_id)}
 
+    _serve_frontend(app, settings.frontend_dist)
     return app

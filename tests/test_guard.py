@@ -87,6 +87,17 @@ class GuardReplyTests(unittest.TestCase):
         self.assertFalse(sent["stream"])
         self.assertIs(sent["think"], False)
 
+    def test_api_key_is_sent_only_when_set(self):
+        body = json.dumps({"message": {"content": "ok"}}).encode()
+        with mock.patch.dict(os.environ, {"OLLAMA_API_KEY": "secret-key"}):
+            with mock.patch("urllib.request.urlopen", return_value=FakeResponse(body)) as m:
+                guard.guard_reply(self.level, [], "hi")
+        self.assertEqual(m.call_args[0][0].get_header("Authorization"), "Bearer secret-key")
+        with mock.patch.dict(os.environ, {"OLLAMA_API_KEY": ""}):
+            with mock.patch("urllib.request.urlopen", return_value=FakeResponse(body)) as m:
+                guard.guard_reply(self.level, [], "hi")
+        self.assertIsNone(m.call_args[0][0].get_header("Authorization"))
+
     def test_unreachable_raises_unavailable(self):
         with mock.patch("urllib.request.urlopen", side_effect=urllib.error.URLError("refused")):
             with self.assertRaises(guard.AIUnavailableError):

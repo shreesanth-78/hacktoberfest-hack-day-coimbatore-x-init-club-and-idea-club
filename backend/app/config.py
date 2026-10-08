@@ -47,3 +47,6 @@ class Settings:
     database_path: str = field(default_factory=lambda: os.environ.get("DATABASE_PATH", "./prompt_heist.db"))
     cors_origins: list = field(default_factory=_origins_from_env)
     levels_dir: str = os.path.join(REPO_ROOT, "levels")
+    # The built frontend (frontend/dist). When this folder exists the backend serves it, so one service
+    # can host the whole game. FRONTEND_DIST overrides the location; an empty value turns it off.
+    frontend_dist: str = field(default_factory=lambda: os.environ.get("FRONTEND_DIST", os.path.join(REPO_ROOT, "frontend", "dist")))

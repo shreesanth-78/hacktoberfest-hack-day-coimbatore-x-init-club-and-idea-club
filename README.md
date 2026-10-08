@@ -470,7 +470,9 @@ New features should come with a test or a documented manual check.
 
 ## Deployment
 
-Not implemented. Proposed: run locally for the demo, because the model runs on the presenter's machine. Optional: host the backend and frontend on a platform such as DigitalOcean if a hosted demo is wanted, which needs enough CPU/RAM to serve the model. This decision is open.
+**Local (tested):** `scripts/start_demo.ps1` builds the frontend and serves the whole game at http://localhost:8000 with the real model.
+
+**Render (prepared, not deployed):** `render.yaml` describes one web service on Render's native Python runtime (no Docker) that serves the built frontend (`frontend/dist`, committed) and the API. **Render has no GPU, so the Gemma model cannot run there**: the service needs an Ollama server to call (your laptop through a tunnel, a hosted Ollama, or `GUARD_STUB=1` to show the screens only). Steps, options and what is and is not verified are in [docs/DEPLOY.md](docs/DEPLOY.md). Creating the Render service needs your Render account and access to the GitHub repository, so it has not been done. The free plan sleeps when idle and wipes scores on restart.
 
 ## Current Development Status
 
@@ -486,10 +488,10 @@ Not implemented. Proposed: run locally for the demo, because the model runs on t
 - Temporary stand-in server `tools/dev_server.py` runs the proposed API contract.
 - Backend (`backend/`): FastAPI app implementing the API contract with SQLite storage (merged in PR #2). Run against the real `gemma4:e2b` model on branch `feature/ai-levels-map1` (after a compatibility patch for the new level fields, the hint, the score formula and the echo guard): a 3-strike loss with the hint, a win by a correct answer, a win by document formatting, the echo exploit staying a non-win, and the leaderboard all behaved correctly. All 67 backend tests and 24 AI-side tests pass on that branch.
 
-- Frontend (`frontend/`): React game UI written by Kirupashankar, and the adapter that connects it to the backend (`src/services/backend.js`, 15 tests with Node's built-in runner). **Played end to end in a real browser** with the real backend and Gemma: a win with the debrief, the hint after the second miss, a defeat with the respawn at level 1, "Checkpoint established" at level 3 (the server recorded checkpoint 3 and 3,500 points), a defeat after the checkpoint that respawns at level 4, and progress that survives a page reload.
+- Frontend (`frontend/`): React game UI written by Kirupashankar, plus the adapter that connects it to the backend (`src/services/backend.js`, 18 tests with Node's built-in runner), a **player-name screen** and a **leaderboard screen**. **Played in a real browser** against the real backend and Gemma: **all 30 levels** (30 won, 0 lost, 4 minutes; all five bosses first refused the earlier tactic, then fell to translation), the hint after the second miss, a defeat with respawn at level 1, "Checkpoint established" (server recorded checkpoint 3 and 3,500 points), a defeat after the checkpoint that respawns at level 4, progress surviving a page reload, the leaderboard, and both AI-error screens ("CONNECTION LOST" for an unreachable model, "SIGNAL TIMEOUT" for a timeout; neither costs a life).
 - Whole campaign through the HTTP API on the real model: all 30 levels cleared, all five learning bosses beaten (`docs/e2e_real_model_run.txt`).
 
-**Not started:** a deployment, the demo video, Defender mode (stretch), a leaderboard screen and a player-name screen in the UI.
+**Not done:** the Render deployment itself (prepared, needs the owner's Render account), the demo video (script in `docs/DEMO_SCRIPT.md`), the Devpost page, Defender mode (stretch).
 
 **Known limitations / open questions:**
 
@@ -549,20 +551,20 @@ Each member adds their own part. Everything below was built during the Hack Day;
 
 ### Team Contributions
 
-- **Shree Santh B:** repository owner and Team Lead: created the repository from the template, set the team name and the team list, and reviewed and merged the team's pull requests. (From Git history.)
-- **Mudiam Hemanth Reddy:** AI and level design: the game concept and README, the AI module (`ai/guard.py`) and its tests, all 30 levels and the tools that generate and check them, the echo guard against echo exploits, the learning-boss design, and the backend and frontend specs. Ran the real Gemma model and the end-to-end checks. (From Git history.)
+- **Shree Santh B:** repository owner and Team Lead: created the repository from the template, set the team name and the team list, added the MIT `LICENSE`, and reviewed and merged the team's pull requests. (From Git history.)
+- **Mudiam Hemanth Reddy:** AI and level design: the game concept and README, the AI module (`ai/guard.py`) and its tests, all 30 levels and the tools that generate and check them, the echo guard, the learning-boss design, and the backend and frontend specs. Connected the frontend to the backend (`frontend/src/services/backend.js`), added the player-name screen and the leaderboard screen, played all 30 levels and the AI-error screens in a real browser, prepared the Render deployment files (`render.yaml`, `docs/DEPLOY.md`, serving the built frontend from the backend), the demo script and launcher, and the final documentation. (From Git history.)
 - **Aditya S:** backend design and implementation (FastAPI, SQLite, campaign rules, learning-boss wiring), integration of the AI module and level files, backend tests and the end-to-end check script, and backend documentation. PRs #1-#7.
 - **Kirupashankar Chockkanathan:** the React and Vite game UI: landing page, world map of five kingdoms, a map for each kingdom with six gates, the encounter screen with the guard, and the victory, checkpoint, defeat and security-debrief screens, plus an in-browser mock for working without a backend (one commit, `frontend`). The adapter that connects it to the real backend was written by Mudiam. (From Git history.)
 
 ## Working Application
 
-**Live Application:** none yet (no deployment). The whole game runs locally: Ollama, the backend and the frontend, started as described in "Running the Project" and `frontend/README.md`.
+**Live Application:** none yet (the Render deployment is prepared but not created; see [docs/DEPLOY.md](docs/DEPLOY.md)). The whole game runs locally with `scripts/start_demo.ps1`, or as three parts (Ollama, backend, frontend) as described in "Running the Project" and `frontend/README.md`.
 
 What can be tested today, through the API at http://localhost:8000/docs: start a campaign, play any of the 30 levels, win or lose, see the debrief, checkpoints, respawn and the leaderboard. See "Running the Project".
 
 ## Demo Video
 
-**Demo Video:** [Video URL]
+**Demo Video:** not recorded yet. The shot-by-shot script, the messages to type and a one-command launcher are ready: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md), `scripts/start_demo.ps1`. Add the video link here once it exists.
 
 ## Open Source and AI Usage
 

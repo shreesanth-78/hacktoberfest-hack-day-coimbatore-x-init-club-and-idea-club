@@ -30,7 +30,11 @@ def check():
     if not model:
         raise AINotReady("OLLAMA_MODEL is not set")
     try:
-        with urllib.request.urlopen(f"{host}/api/tags", timeout=TIMEOUT_SECONDS) as resp:
+        headers = {}
+        if os.environ.get("OLLAMA_API_KEY", "").strip():  # a hosted Ollama needs the key
+            headers["Authorization"] = "Bearer " + os.environ["OLLAMA_API_KEY"].strip()
+        request = urllib.request.Request(f"{host}/api/tags", headers=headers)
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, OSError) as e:
         raise AINotReady(f"cannot reach Ollama at {host}") from e

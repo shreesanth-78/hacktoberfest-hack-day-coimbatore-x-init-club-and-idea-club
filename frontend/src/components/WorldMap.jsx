@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { KINGDOMS } from '../data/kingdoms.js';
 import { useGame } from '../hooks/useGameState.jsx';
 import { spline, usePathWalker } from '../hooks/usePathWalker.js';
@@ -154,6 +154,7 @@ export default function WorldMap({ devTools }) {
       <div className="map-hud top">
         <div className="hud-plate"><span className="hud-title">PROMPT HEIST</span><span className="hud-sub">The Five Ancient Kingdoms</span></div>
         <div className="hud-plate small" title="Kingdoms sealed"><ShieldIcon /> <b>{game.kingdomsCompleted}</b>/5 kingdoms</div>
+        <Link className="stone-btn tiny" to="/leaderboard">🏆 Leaderboard</Link>
         {devTools && <div className="dev-tools"><button className="stone-btn tiny" onClick={game.unlockAll}>Dev: unlock to Lv6</button><button className="stone-btn tiny" onClick={game.resetAll}>Reset</button></div>}
       </div>
 

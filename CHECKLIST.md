@@ -80,8 +80,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Loading state while the model replies (the guard's typing dots; "Contacting the kingdom" at start-up)
 - [x] Error handling and retry on AI errors (in-game texts for `ai_unavailable` and `ai_timeout`, a failed send is rolled back so it can be re-sent; covered by the adapter tests, not provoked live)
 - [x] Debrief screen (technique, vulnerability and defence come from the backend)
-- [ ] Leaderboard screen (not built; the API `GET /api/campaigns/leaderboard` exists)
-- [x] Most screens and API calls from `docs/FRONTEND_SPEC.md`: map of 5 kingdoms, gate encounter, hint, victory/debrief, defeat and respawn, checkpoint. Not built: campaign leaderboard, player-name entry
+- [x] Leaderboard screen (`/leaderboard`, checked in the browser)
+- [x] The screens and API calls from `docs/FRONTEND_SPEC.md`: map of 5 kingdoms, gate encounter, hint, victory/debrief, defeat and respawn, checkpoint, player-name entry, leaderboard
 - [x] `campaign_id` kept in `localStorage`; reloading the page resumes the campaign (checked in the browser: 3/6 survived a reload)
 - [ ] Responsible-use notice before the first level
 - [ ] Readable on a laptop or projector
@@ -95,13 +95,14 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 
 ## 7. Docs and submission (Shree Santh B)
 
-- [ ] README sections accurate and filled in (no leftover placeholders)
-- [ ] Team contributions written from real commit history
-- [ ] Challenges and learnings written
+- [x] README sections accurate and filled in (only the demo video and Devpost links are still placeholders, because those do not exist yet)
+- [x] Team contributions written from real commit history
+- [x] Challenges and learnings written
 - [ ] Informal playtest feedback from 3 to 5 people recorded (real answers only)
-- [ ] Demo video recorded; link added
+- [ ] Demo video recorded; link added (script, messages and launcher are ready: `docs/DEMO_SCRIPT.md`, `scripts/start_demo.ps1`)
+- [ ] Deployed on Render (prepared: `render.yaml`, `docs/DEPLOY.md`; needs the repository owner's Render account; the model cannot run on Render, see the guide)
 - [ ] Devpost project created; link added
-- [ ] No secrets committed (`.env` is not tracked)
+- [x] No secrets committed (`.env` and `*.db` are ignored; checked before each commit)
 - [ ] Submitted through OrganizerHQ before the deadline
 - [ ] Best Open-Source AI Project selected in the submission
 - [ ] Gemma 4 box ticked in the submission
