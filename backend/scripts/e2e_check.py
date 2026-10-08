@@ -1,12 +1,12 @@
 """End-to-end check of a running backend, through its HTTP API only.
 
 Plays every attack in levels/attacks.json against the backend and reports what happened,
-then plays the campaign as one browser player to check progress. Use it to confirm the
+then plays the campaign (POST /api/campaigns) as one browser player. Use it to confirm the
 real model works through the real backend (for example on the AI owner's laptop).
 
 Start the backend first, then from the repository root:
     python backend/scripts/e2e_check.py                       # http://localhost:8000
-    python backend/scripts/e2e_check.py --base http://10.0.0.5:8000 --trials 3
+    python backend/scripts/e2e_check.py --base http://10.0.0.5:8000 --trials 3 --levels 6
 
 Standard library only. Exit code: 0 if every request worked (wins and losses are just
 reported), 1 if any request failed (including AI errors 502/504), 2 if the guard is not ready.
@@ -54,6 +54,26 @@ class Client:
         return True
 
 
+def level_attacks(attacks, level_id):
+    """Attacks for a level as dicts {message, expect, name}. Plain strings (older format) count as "info"."""
+    out = []
+    for item in attacks.get(str(level_id), []):
+        if isinstance(item, dict):
+            out.append({"message": item["message"], "expect": item.get("expect", "info"), "name": item.get("name", "")})
+        else:
+            out.append({"message": item, "expect": "info", "name": ""})
+    return out
+
+
+def matches(expect, wins, tries):
+    """Same thresholds as tools/level_trials.py: an intended trick wins at least 60% of tries,
+    a plain or earlier trick at most 20%."""
+    if not tries or expect == "info":
+        return True
+    rate = wins / tries
+    return rate >= 0.6 if expect == "win" else rate <= 0.2
+
+
 def short(text, n=70):
     text = " ".join(str(text).split())
     return text if len(text) <= n else text[: n - 3] + "..."
@@ -80,9 +100,12 @@ def check_ready(api):
 
 
 def run_attacks(api, levels, attacks, trials):
-    print("\n== Attacks (one fresh session per try) ==")
+    """Free-play sessions, so learning bosses face these attacks without learned tactics."""
+    print("\n== Attacks (one fresh free-play session per try) ==")
+    mismatches = 0
     for level in levels:
-        for message in attacks.get(str(level["id"]), []):
+        for attack in level_attacks(attacks, level["id"]):
+            message = attack["message"]
             outcomes, times = [], []
             for _ in range(trials):
                 status, body = api.call("POST", "/api/sessions",
@@ -96,47 +119,55 @@ def run_attacks(api, levels, attacks, trials):
                 outcomes.append("WIN" if body["status"] == "won" else "-")
             wins = outcomes.count("WIN")
             avg = f"{sum(times) / len(times):.1f}s" if times else "n/a"
-            print(f"L{level['id']} wins {wins}/{trials}  avg {avg}  | {short(message)}")
+            ok = matches(attack["expect"], wins, len(outcomes))
+            mismatches += not ok
+            flag = "" if ok else "  <-- not as expected"
+            print(f"L{level['id']} {attack['expect']:<4} {attack['name']:<10} wins {wins}/{trials}  avg {avg}{flag}"
+                  f"  | {short(message, 50)}")
+    print(f"Attacks not as expected: {mismatches} (the model varies; use --trials 3 or more before tuning)")
 
 
-def run_campaign(api, levels, attacks):
+def run_campaign(api, levels, attacks, max_levels):
     print("\n== Campaign as one browser player ==")
-    status, body = api.call("POST", "/api/players")
-    if not api.expect(201, status, body, "POST /api/players"):
+    status, body = api.call("POST", "/api/campaigns", {"player_name": "e2e-check"})
+    if not api.expect(201, status, body, "POST /api/campaigns"):
         return
-    player_id = body["player_id"]
-    for level in levels:
-        status, body = api.call("POST", "/api/sessions", {
-            "level_id": level["id"], "player_name": "e2e-check", "player_id": player_id})
+    campaign_id = body["campaign_id"]
+    for _ in range(max_levels):
+        status, body = api.call("POST", f"/api/campaigns/{campaign_id}/sessions")
         if status == 409:
-            print(f"L{level['id']}: locked (an earlier level was not cleared), stopping")
+            break  # campaign completed
+        if not api.expect(201, status, body, "enter the current level"):
             break
-        if not api.expect(201, status, body, f"start level {level['id']}"):
-            break
-        session_id, result = body["session_id"], None
-        for message in attacks.get(str(level["id"]), []):
+        level_id, session_id, result = body["level_id"], body["session_id"], None
+        tricks = sorted(level_attacks(attacks, level_id), key=lambda a: a["expect"] != "win")  # intended trick first
+        for message in [a["message"] for a in tricks][: body["attempts_remaining"]]:
             status, result, _ = send(api, session_id, message)
-            if not api.expect(200, status, result, f"message on level {level['id']}"):
+            if not api.expect(200, status, result, f"message on level {level_id}"):
                 result = None
                 break
             if result["status"] != "in_progress":
                 break
-        if result is None:
+        if result is None or result["campaign"] is None:
+            print(f"L{level_id}: not finished with the stored attacks (no more attacks to try), stopping")
             break
-        extra = f", restart at L{result['restart_level_id']}" if result["status"] == "lost" else ""
-        print(f"L{level['id']}: {result['status']} (score {result['score']}{extra}) | {short(result['reply'])}")
-        if result["status"] != "won":
+        c = result["campaign"]
+        flags = [name for name in ("checkpoint_reached", "kingdom_cleared", "campaign_completed") if c[name]]
+        print(f"L{level_id}: {c['outcome']} (level {c['level_score']}, total {c['total_score']}, next "
+              f"{c['next_level_id']}{', ' + ', '.join(flags) if flags else ''}) | {short(result['reply'])}")
+        if c["outcome"] == "lost":
             break
-    status, body = api.call("GET", f"/api/players/{player_id}/progress")
-    if api.expect(200, status, body, "GET progress"):
-        states = " ".join(f"L{lv['level_id']}:{lv['status']}" for lv in body["levels"])
-        print(f"Progress: {states} | campaign score {body['campaign_score']} | completed {body['completed']}")
+    status, body = api.call("GET", f"/api/campaigns/{campaign_id}")
+    if api.expect(200, status, body, "GET campaign"):
+        print(f"Campaign: {body['status']}, level {body['current_level_id']} (kingdom {body['current_kingdom']}), "
+              f"cleared {len(body['cleared_level_ids'])}, total score {body['total_score']}")
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base", default="http://localhost:8000", help="backend base URL")
     parser.add_argument("--trials", type=int, default=1, help="tries per attack message")
+    parser.add_argument("--levels", type=int, default=0, help="only the first N levels (0 = all)")
     args = parser.parse_args(argv)
 
     api = Client(args.base)
@@ -146,11 +177,13 @@ def main(argv=None):
     if not api.expect(200, status, body, "GET /api/levels"):
         return 1
     levels = sorted(body["levels"], key=lambda lv: lv["id"])
+    if args.levels:
+        levels = levels[: args.levels]
     with open(ATTACKS_FILE, encoding="utf-8") as f:
         attacks = json.load(f)
 
     run_attacks(api, levels, attacks, args.trials)
-    run_campaign(api, levels, attacks)
+    run_campaign(api, levels, attacks, len(levels))
 
     print(f"\n{'All requests worked.' if api.failures == 0 else f'{api.failures} request(s) failed.'}")
     return 0 if api.failures == 0 else 1
