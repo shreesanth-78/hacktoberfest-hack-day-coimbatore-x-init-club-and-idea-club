@@ -22,7 +22,7 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] README and role plan written
 - [x] README, CONTEXT.md, CHECKLIST.md, .env.example pushed to GitHub
 - [ ] Everyone has cloned the repo and set their Git name and email
-- [ ] `.gitignore` added (ignores `.env`, caches, build output)
+- [x] `.gitignore` added (ignores `.env`, caches, build output) (Python entries added by Aditya; frontend owner to add build output)
 - [ ] Ollama installed on the team laptops (done on Mudiam's laptop only)
 - [x] Gemma variant chosen (`gemma4:e2b`), pulled, and confirmed to run (Mudiam's laptop)
 - [x] Level config format agreed (`levels/README.md`; confirmed by Aditya)
@@ -45,23 +45,23 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 
 ## 4. Backend (Aditya S)
 
-- [ ] Project set up with a health check
-- [ ] Config read from env (`OLLAMA_*`, `DATABASE_PATH`, `CORS_ORIGINS`); CORS enabled for the frontend
-- [ ] Level loader reads `levels/*.json`
-- [ ] Output filter (`block_exact`) applied as in `levels/README.md`
-- [ ] Levels endpoint (no secret or prompt in the response)
-- [ ] Sessions endpoint
-- [ ] Messages endpoint calling the AI module
-- [ ] Win check in code (case-insensitive, simple variants)
-- [ ] Attempt counting; failed AI call does not use an attempt
-- [ ] Scoring and SQLite storage
-- [ ] Leaderboard endpoint
-- [ ] Validation and standard error format
-- [ ] Unit tests for the win check and scoring
-- [ ] Secret never appears in responses or logs
-- [ ] API tests for every endpoint and error code (400/404/409/502/504)
+- [x] Project set up with a health check
+- [x] Config read from env (`OLLAMA_*`, `DATABASE_PATH`, `CORS_ORIGINS`); CORS enabled for the frontend
+- [x] Level loader reads `levels/*.json`
+- [x] Output filter (`block_exact`) applied as in `levels/README.md`
+- [x] Levels endpoint (no secret or prompt in the response)
+- [x] Sessions endpoint
+- [x] Messages endpoint calling the AI module
+- [x] Win check in code (case-insensitive, simple variants)
+- [x] Attempt counting; failed AI call does not use an attempt
+- [x] Scoring and SQLite storage
+- [x] Leaderboard endpoint
+- [x] Validation and standard error format
+- [x] Unit tests for the win check and scoring
+- [ ] Secret never appears in responses or logs (tested for `/api/levels` and filtered replies; server log has no bodies; recheck with the real model)
+- [x] API tests for every endpoint and error code (400/404/409/502/504)
 - [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted
-- [ ] Backend run commands written in the README and tested
+- [x] Backend run commands written in the README and tested
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
