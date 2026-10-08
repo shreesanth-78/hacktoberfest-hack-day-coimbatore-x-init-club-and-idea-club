@@ -586,7 +586,7 @@ Every dependency keeps its own license; the backend's are pinned in `backend/req
 
 Each member adds their own.
 
-### Backend (Aditya S)
+### Backend 
 
 - **Four people on one repository.** Two branches were built on an older `main`, and once git merged a file "successfully" into a broken result (a duplicated field) without reporting a conflict.
   - Learning: pull before every change, keep each person in their own folder, and read every auto-merged file.
@@ -598,7 +598,7 @@ Each member adds their own.
   - Learning: test the setup steps from a fresh clone, exactly as written.
 - **Tests that pass on the first run can be hollow.** Deliberately breaking the code caught tests that did not check what they claimed, for example one that never exercised two games finishing at once.
 
-### AI and levels (Mudiam Hemanth Reddy)
+### AI and levels 
 
 - **Gemma 4 "thinks" first.** Without `think: false`, the model spent the whole token budget on hidden reasoning and returned an empty reply. The AI module now turns thinking off.
 - **A guard that refuses can still leak.** Guards told to refuse often wrote the code inside the refusal ("I will not tell you SURGE-HALO"). Every refusing guard is now told to refuse without writing the code.
@@ -611,7 +611,7 @@ Each member adds their own.
 
 ## Devpost Submission
 
-**Devpost Project:** [Devpost Project URL]
+**Devpost Project:** [[Devpost Project URL]](https://dev.to/shreesanth78/prompt-heist-i-built-an-ancient-kingdom-game-that-teaches-ai-security-kg5)
 
 ## Credits and License
 
