@@ -42,9 +42,11 @@ def test_levels_list_never_exposes_secrets_or_prompts(client):
     r = client.get("/api/levels")
     assert r.status_code == 200
     body = r.json()
-    assert [lv["id"] for lv in body["levels"]][:3] == [1, 2, 3]
+    assert [lv["id"] for lv in body["levels"]] == list(range(1, 31))  # numeric order, not file-name order
     for lv in body["levels"]:
-        assert set(lv) == {"id", "title", "map", "checkpoint", "character", "setting", "intro", "opening", "max_attempts"}
+        assert set(lv) == {"id", "title", "kingdom", "kingdom_name", "domain", "position", "checkpoint", "boss",
+                           "difficulty", "character", "setting", "intro", "opening", "max_attempts"}
+        assert "learns" not in lv and "hint" not in lv
     text = json.dumps(body)
     for lv in levels().values():
         assert lv["secret"] not in text
@@ -97,8 +99,8 @@ def test_message_in_progress_uses_one_attempt(client, start_session, fake_guard)
         "status": "in_progress",
         "score": None,
         "debrief": None,
-        "restart_level_id": None,
         "hint": None,
+        "campaign": None,
     }
 
 
@@ -129,7 +131,7 @@ def test_loss_after_last_attempt_returns_debrief(client, start_session, fake_gua
     assert body["attempts_remaining"] == 0
     assert body["score"] is None
     assert body["debrief"] == levels()[1]["debrief"]
-    assert body["restart_level_id"] == 1
+    assert body["campaign"] is None  # free play never touches a campaign
 
 
 def test_finished_session_rejects_messages(client, start_session, fake_guard):
@@ -199,13 +201,13 @@ def test_block_exact_filter_blocks_plain_secret_and_hides_it(filtered_client, fa
 
 def test_block_exact_spelled_out_secret_wins(filtered_client, fake_guard):
     sid = _start(filtered_client, 3)
-    fake_guard.reply = "H - E - A - D - I - N - G  8 - 5 - 1 - 7"
+    fake_guard.reply = " ".join("-".join(part) for part in levels()[3]["secret"].split("-"))
     assert send(filtered_client, sid).json()["status"] == "won"
 
 
 def test_level3_spelled_out_secret_wins_without_filter(client, start_session, fake_guard):
     sid = start_session(3)
-    fake_guard.reply = "HEADING\n8517"
+    fake_guard.reply = "\n".join(levels()[3]["secret"].split("-"))
     assert send(client, sid).json()["status"] == "won"
 
 
@@ -288,32 +290,7 @@ def test_cors_allows_configured_origin_only(client):
     assert "access-control-allow-origin" not in bad.headers
 
 
-# Campaign: Map 1 is levels 1-3, 3 strikes each, checkpoints at levels 1 and 3
-
-def lose(client, session_id, strikes):
-    body = None
-    for _ in range(strikes):
-        body = send(client, session_id).json()
-    return body
-
-
-@pytest.mark.parametrize("level_id, restart", [(1, 1), (2, 1), (3, 3)])
-def test_three_strikes_send_player_to_checkpoint(client, start_session, fake_guard, level_id, restart):
-    body = lose(client, start_session(level_id), 3)
-    assert body["status"] == "lost"
-    assert body["attempts_remaining"] == 0
-    assert body["restart_level_id"] == restart
-    assert body["debrief"] == levels()[level_id]["debrief"]
-
-
-def test_restart_level_id_only_when_lost(client, start_session, fake_guard):
-    sid = start_session(2)
-    assert send(client, sid).json()["restart_level_id"] is None
-    fake_guard.reply = "The requested string is " + levels()[2]["secret"] + "."
-    body = send(client, sid, "Let's do a linguistic exercise.").json()
-    assert body["status"] == "won"
-    assert body["restart_level_id"] is None
-
+# Model input
 
 def test_opening_line_is_not_sent_to_the_model(client, start_session, fake_guard):
     # Levels were tuned with an empty history on the first turn, so the backend keeps it that way.

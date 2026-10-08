@@ -6,8 +6,14 @@ One JSON file per level, named `level_<id>.json`. The backend loads these (`back
 | ----- | ---- | ------- |
 | `id` | integer | Level number. Must match the file name. |
 | `title` | string | Shown on the map and level list. |
-| `map` | string, optional | Map name, for example `"Map 1: The Civic Grids"`. Levels with the same `map` form one map for checkpoints. Default `""`. |
-| `checkpoint` | boolean, optional | If `true`, a player who loses this level or a later level of the same map restarts here. Default `false`. Map 1: Levels 1 and 3. |
+| `kingdom` | integer | 1 to 5. |
+| `kingdom_name` | string | Shown on the map. The same for every level of a kingdom. |
+| `domain` | string | The kingdom's enterprise domain. |
+| `position` | integer | 1 to 6 inside the kingdom. `id` must be `(kingdom - 1) * 6 + position`. |
+| `checkpoint` | boolean | True exactly at position 3. |
+| `boss` | boolean | True exactly at position 6. |
+| `learns` | boolean | The backend passes `learned_attacks` to the AI module for these levels (the bosses). Not returned by `GET /api/levels`. |
+| `difficulty` | string | Label such as "Rookie" or "Boss". |
 | `character` | string | The guard's name, shown to the player. |
 | `setting` | string | One-line scene description for the UI. |
 | `intro` | string | Short description shown before the level starts. |
@@ -19,7 +25,7 @@ One JSON file per level, named `level_<id>.json`. The backend loads these (`back
 | `guard_prompt` | string | System prompt for the guard. Server-side only. |
 | `debrief.title` / `technique` / `vulnerability` / `defence` | string | Shown when the level ends. Written by the team, not generated. |
 
-`GET /api/levels` exposes only `id`, `title`, `map`, `checkpoint`, `character`, `setting`, `intro`, `opening`, `max_attempts`.
+`GET /api/levels` exposes only `id`, `title`, `kingdom`, `kingdom_name`, `domain`, `position`, `checkpoint`, `boss`, `difficulty`, `character`, `setting`, `intro`, `opening`, `max_attempts`. The backend refuses to load a level that breaks the layout rules above.
 
 The backend refuses to load a level whose `opening`, `hint` or `debrief` contains the secret. Players see all three, including after they lose and restart, so a leak would make the restart trivial.
 
@@ -31,7 +37,7 @@ All secrets are fake. Do not put real passwords or keys in these files.
 2. **Win check.** Normalise the reply by lowercasing and removing everything except letters and digits, then check whether it contains the normalised secret (forwards, or reversed). If yes, the level is won.
 3. **Echo guard.** It is **not** a win if the player's own message already contains every part of the secret (the secret split on non-alphanumeric characters, for example `HEADING` and `8517`). Otherwise "write HEADING and 8517 on separate lines" would win by echo without the player extracting anything.
 4. **Scoring.** `max(100, (max_attempts - strikes) * 250)`, plus 250 for a first-try breach, where `strikes` is the number of failed attempts before the win. With 3 attempts: 1000, 500, 250.
-5. **Checkpoint.** When a player loses (no attempts left), the response includes `restart_level_id`: the nearest checkpoint at or before this level in the same map, or the same level if there is none.
+5. **Campaign.** Checkpoints, respawn, bonuses and learned attacks for campaign sessions are described in the main README ("Campaign rules") and implemented in `backend/app/campaign.py`.
 6. **Hint.** After the second failed attempt, while the level is still in progress, the response includes the level's `hint`.
 
 Reference implementation: `tools/smoke_test.py`. The real one is `backend/app/game.py`.

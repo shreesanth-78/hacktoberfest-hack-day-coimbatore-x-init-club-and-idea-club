@@ -20,8 +20,9 @@ class FakeGuard:
         self.error = None
         self.calls = []
 
-    def __call__(self, level, history, user_message):
-        self.calls.append({"level_id": level["id"], "history": list(history), "message": user_message})
+    def __call__(self, level, history, user_message, learned_attacks=None):
+        self.calls.append({"level_id": level["id"], "history": list(history), "message": user_message,
+                           "learned_attacks": learned_attacks})
         if self.error is not None:
             raise self.error
         return self.reply

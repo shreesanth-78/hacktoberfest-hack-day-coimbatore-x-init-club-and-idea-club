@@ -10,8 +10,13 @@ MessageText = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 class Level(BaseModel):
     id: int
     title: str
-    map: str
+    kingdom: int
+    kingdom_name: str
+    domain: str
+    position: int
     checkpoint: bool
+    boss: bool
+    difficulty: str
     character: str
     setting: str
     intro: str
@@ -26,7 +31,6 @@ class LevelList(BaseModel):
 class CreateSessionRequest(BaseModel):
     level_id: int
     player_name: PlayerName
-    player_id: Optional[str] = None  # from POST /api/players; enables progress and level locking
 
 
 class SessionCreated(BaseModel):
@@ -46,32 +50,62 @@ class Debrief(BaseModel):
     defence: str
 
 
+class Bonuses(BaseModel):
+    checkpoint: int
+    kingdom: int
+
+
+class CampaignOutcome(BaseModel):
+    """Sent with a message response when a campaign level ends."""
+    outcome: Literal["won", "lost"]
+    level_score: int
+    bonuses: Bonuses
+    total_score: int
+    next_level_id: Optional[int] = None
+    respawn: bool
+    checkpoint_reached: bool
+    kingdom_cleared: bool
+    campaign_completed: bool
+
+
 class MessageResponse(BaseModel):
     reply: str
     attempts_remaining: int
     status: Literal["in_progress", "won", "lost"]
     score: Optional[int] = None
     debrief: Optional[Debrief] = None
-    restart_level_id: Optional[int] = None
     hint: Optional[str] = None
+    campaign: Optional[CampaignOutcome] = None
 
 
-class PlayerCreated(BaseModel):
-    player_id: str
+class CreateCampaignRequest(BaseModel):
+    player_name: PlayerName
 
 
-class LevelProgress(BaseModel):
-    level_id: int
-    status: Literal["cleared", "unlocked", "locked"]
-    best_score: Optional[int] = None
+class CampaignState(BaseModel):
+    campaign_id: str
+    player_name: str
+    status: Literal["in_progress", "completed"]
+    current_level_id: int
+    current_kingdom: int
+    checkpoint_level_id: Optional[int] = None
+    cleared_level_ids: list[int]
+    total_score: int
 
 
-class Progress(BaseModel):
-    player_id: str
-    current_level_id: Optional[int] = None
-    completed: bool
-    campaign_score: int
-    levels: list[LevelProgress]
+class CampaignSession(SessionCreated):
+    level: Level
+
+
+class CampaignLeaderboardEntry(BaseModel):
+    player_name: str
+    total_score: int
+    status: Literal["in_progress", "completed"]
+    levels_cleared: int
+
+
+class CampaignLeaderboard(BaseModel):
+    entries: list[CampaignLeaderboardEntry]
 
 
 class LeaderboardEntry(BaseModel):

@@ -8,7 +8,7 @@ Rule for this file: record only what is true. Use `Not specified` when unknown. 
 
 ## A. Project Context
 
-**Overview.** Prompt Heist is a browser game set in the *Silicon Bastion* campaign (Map 1 = Levels 1-3, with guard interrogations, 3 strikes, hints and checkpoints; design in `docs/GAME_DESIGN.md`). The player chats with an AI "guard" that protects a fictional secret and tries to make it reveal the secret. A debrief then explains the technique and the defence. Goal: teach prompt-injection concepts safely, with a local open-weight model. Full description: [README.md](README.md).
+**Overview.** Prompt Heist is a browser game set in the *Silicon Bastion* campaign: 30 levels in 5 kingdoms of 6, with 3 lives per level, hints, a checkpoint at position 3, and a learning boss at position 6. Specs: `docs/BACKEND_CAMPAIGN_SPEC.md` and `docs/FRONTEND_SPEC.md`. The player chats with an AI "guard" that protects a fictional secret and tries to make it reveal the secret. A debrief then explains the technique and the defence. Goal: teach prompt-injection concepts safely, with a local open-weight model. Full description: [README.md](README.md).
 
 **Current state (verified from the repository):** documentation, the AI module (`ai/guard.py`), level files, tests, a temporary stand-in server (`tools/dev_server.py`), and the real backend (`backend/`, FastAPI and SQLite). There is no frontend yet.
 
@@ -53,7 +53,8 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 | Date | Contributor | Component | Changes Made | Files Modified | Dependencies or Impact | Status |
 | ---- | ----------- | --------- | ------------ | -------------- | ---------------------- | ------ |
-| 2026-10-08 | Aditya S | Backend: AI readiness | The documented `.env` setup did not work, because nothing read `.env`. The backend now loads the root `.env` on startup (standard library; shell variables win). Added `GET /api/health/ai` (stub, or Ollama reachable with the model pulled, else `503 ai_not_ready` with the reason) and `backend/scripts/e2e_check.py`, which plays `levels/attacks.json` and a full campaign through the running API. Added a commented `GUARD_STUB` line to `.env.example`. 143 tests pass (119 backend + 24 AI/tools) | `backend/app/{config,ai_status,main,schemas}.py`, `backend/scripts/e2e_check.py`, `backend/tests/test_ai_readiness.py`, `.env.example`, `README.md`, `backend/README.md`, `CONTEXT.md`, `CHECKLIST.md` | **API, additive:** `GET /api/health/ai`. No changes to existing endpoints. E2E script verified against a stub backend, a backend whose guard always leaks (to exercise the win path), and an unreachable Ollama. **Not yet run against the real model** | In PR #6 |
+| 2026-10-08 | Aditya S | Backend: campaign | Merged Mudiam's 30-level branch (it was based on an older `main`; only the 3 level files conflicted, and his versions were taken). Built the campaign from `docs/BACKEND_CAMPAIGN_SPEC.md`. **It replaces the PR #5 players/progress system and PR #3's `map`/`restart_level_id`**: the frontend spec uses campaigns, and no frontend used the old endpoints. Level loader validates the kingdom layout. Learning bosses get `learned_attacks` as `{message, technique}` items. The total score counts each level once (best score) plus bonuses, so it cannot be farmed. The e2e script now plays campaigns and reads the new `attacks.json` format. 150 tests pass (126 backend + 24 AI/tools) | `backend/app/{campaign,db,levels,main,schemas}.py` (removed `progress.py`), `backend/tests/{test_campaign,test_levels,test_api,conftest}.py` (removed `test_players.py`), `backend/scripts/e2e_check.py`, `levels/README.md` (field table), `README.md`, `backend/README.md`, `docs/GAME_DESIGN.md`, `CONTEXT.md`, `CHECKLIST.md` | **API:** new `/api/campaigns` endpoints and a `campaign` object on message responses. **Removed:** `/api/players*`, `player_id`, `map`, `restart_level_id`. New level fields in `GET /api/levels`. Verified through HTTP with a leaking fake guard (all 30 levels, 37,500 points, bosses get 5 kept tactics each). **Not yet run on the real model** | In PR #7 |
+| 2026-10-08 | Aditya S | Backend: AI readiness | The documented `.env` setup did not work, because nothing read `.env`. The backend now loads the root `.env` on startup (standard library; shell variables win). Added `GET /api/health/ai` (stub, or Ollama reachable with the model pulled, else `503 ai_not_ready` with the reason) and `backend/scripts/e2e_check.py`, which plays `levels/attacks.json` and a full campaign through the running API. Added a commented `GUARD_STUB` line to `.env.example`. 143 tests pass (119 backend + 24 AI/tools) | `backend/app/{config,ai_status,main,schemas}.py`, `backend/scripts/e2e_check.py`, `backend/tests/test_ai_readiness.py`, `.env.example`, `README.md`, `backend/README.md`, `CONTEXT.md`, `CHECKLIST.md` | **API, additive:** `GET /api/health/ai`. No changes to existing endpoints. E2E script verified against a stub backend, a backend whose guard always leaks (to exercise the win path), and an unreachable Ollama. **Not yet run against the real model** | Merged (PR #6) |
 | 2026-10-08 | Aditya S | Backend: progress | Per-browser saved progress. `players` table and `player_id` on sessions, with an automatic migration for older database files. `POST /api/players`; `GET /api/players/{id}/progress` (level status, best scores, campaign score); level locking (`409 level_locked`); progress moves on win and falls back to the checkpoint on loss; the frontier update is safe when two sessions finish at once. Stores each level's winning message (`winning_messages`) for Mudiam's planned learning boss. 130 tests pass (106 backend + 24 AI/tools) | `backend/app/{progress,db,main,schemas}.py`, `backend/tests/test_players.py`, `README.md`, `backend/README.md`, `docs/GAME_DESIGN.md`, `CONTEXT.md`, `CHECKLIST.md` | **API, additive:** new player endpoints; optional `player_id` on `POST /api/sessions`; new error `409 level_locked` (only with `player_id`). Old clients unchanged. Frontend must store `player_id` per browser (section D, item 19). Learning-guard interface still to agree (item 20) | Merged (PR #5) |
 | 2026-10-08 | Aditya S | Integration | Merged Mudiam's `feature/ai-levels-map1` with PR #3. Kept Mudiam's tuned Map 1 (Levels 1-3), `attacks.json`, level format v2, echo guard, hint and score formula. Kept the PR #3 checkpoint restart (`restart_level_id`) and secret-leak checks (now also on `hint` and `debrief.vulnerability`). Removed the untuned duplicate Levels 4-6 and the Training map. `map` is now Mudiam's string; added `checkpoint: true` to Levels 1 and 3. Opening line is **not** sent to the model, matching how the levels were tuned. 106 tests pass (82 backend + 24 AI/tools) | `backend/app/{levels,schemas,main}.py`, `backend/tests/*`, `levels/level_1-3.json` (checkpoint flag only), `levels/README.md`, `docs/GAME_DESIGN.md`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | Final API: `/api/levels` items have `id`, `title`, `map`, `checkpoint`, `character`, `setting`, `intro`, `opening`, `max_attempts`; message responses have `restart_level_id` and `hint`. `map_title` from PR #3 is gone (no frontend used it) | Merged (PR #4) |
 | 2026-10-08 | Aditya S | Game design / Backend / Levels | Adopted the Silicon Bastion campaign from the team's game plan: map fields, checkpoint restart, `docs/GAME_DESIGN.md`, untuned Map 1 as Levels 4-6 | `docs/GAME_DESIGN.md`, `levels/level_4-6.json`, `backend/*`, docs | Levels 4-6 and `map_title` later replaced by Mudiam's tuned levels in PR #4 | Merged (PR #3) |
@@ -150,34 +151,11 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 13. **Level format v2 and contract changes (2026-10-08, Mudiam).** New required level fields: `character`, `setting`, `opening`, `hint`; `debrief` gains `vulnerability`; `max_attempts` is 3; `map` is optional. API changes: `GET /api/levels` also returns `character`, `setting`, `opening`; the message response gains `hint` (set only on the second failed attempt while in progress); `debrief` gains `vulnerability`; the score formula is `max(100, (max_attempts - strikes) * 250)` plus 250 for a first-try breach. Merged with PR #3 in PR #4 (see item 18). **Kirupashankar: the opening line and hint come from the API.**
 14. **Echo guard.** A reply is not a win if the player's own message already contains every part of the secret (found while reviewing the script: asking the guard to write the two parts of the cipher on separate lines was a win even if the player typed both parts). Implemented in `backend/app/game.py` (`is_win(level, reply, user_message)`) and in `tools/smoke_test.py`.
 15. **All shipped levels use `output_filter: "none"`.** The `block_exact` path is still supported and tested but unused.
-16. **Checkpoints and progress.**
-    - Done (PR #3, kept in PR #4): Map 1 checkpoints are Levels 1 and 3. When a player loses, the response gives `restart_level_id` (Level 2 → 1, Level 3 → 3, Level 1 → 1).
-    - Done (PR #5): **saved progress per browser** (decided by Aditya, 2026-10-08).
-      - `POST /api/players` returns a `player_id`, which the frontend keeps in `localStorage`.
-      - Sessions started with `player_id` are locked to unlocked levels (`409 level_locked`) and move the player's progress when they finish.
-      - `GET /api/players/{id}/progress` returns each level's status and best score, plus the campaign score.
-      - Losing the current level moves progress back to its checkpoint.
-      - Per-browser was chosen over per-name, so no one can continue another player's campaign by typing their name.
-    - **Not done:** the Level 3 clearance bonus. Its value is not defined in the repository, so it is not implemented.
+16. **Checkpoints and progress:** superseded by item 22 (campaigns). The PR #3-#5 `map`, `restart_level_id` and `/api/players` designs were removed in PR #7.
 17. **Gemma 4 needs `think: false` and a short `num_predict`.** Without `think: false` replies can be empty. `num_predict` is 80 (team design), so replies stay short and fast (about 3 seconds on an RTX 4060).
-18. **Integration decisions (PR #4, Aditya, 2026-10-08).**
-    - Mudiam's real-model-tuned Map 1 replaces the untuned Levels 4-6 and the Training map from PR #3.
-    - `map` is a string and groups levels for checkpoints. `checkpoint` is a boolean.
-    - The guard's `opening` is shown to the player but **not** sent to the model, because the levels were tuned with an empty first-turn history.
-    - The backend rejects any level whose `opening`, `hint` or `debrief` contains the secret.
-19. **Frontend work from the campaign.**
-    - Show `character`, `setting` and the `opening` line before the first message.
-    - Group levels by `map`, and show attempts as strikes.
-    - Show `hint` when present.
-    - On `lost`, offer "restart from checkpoint": start a new session for `restart_level_id`.
-    - On first visit, call `POST /api/players` and store `player_id` in `localStorage`. Send it with every `POST /api/sessions`.
-    - Build the map screen from `GET /api/players/{id}/progress`. Show locked levels as locked, and show the `campaign_score`.
-    - If `GET /api/players/{id}/progress` returns 404 (for example after the database was reset), create a new player.
-20. **Learning boss handoff (for Mudiam's planned level-6 guards).**
-    - The backend stores the message that won each level. `Database.winning_messages(player_id)` returns them, oldest first, as `[{"level_id", "message"}]`.
-    - It is **not yet passed to the AI module**, because the `guard_reply` interface for learning guards is not defined.
-    - Proposal: add a level field (for example `"learns": true`). For those levels the backend calls `guard_reply(level, history, user_message, learned=[...])` with this player's earlier winning messages. Mudiam to confirm the name and shape, then Aditya wires it in.
-
+18. **Integration decisions (PR #4, Aditya, 2026-10-08).** The guard's `opening` is shown to the player but **not** sent to the model, because the levels were tuned with an empty first-turn history. The backend rejects any level whose `opening`, `hint` or `debrief` contains the secret. (The `map` field from PR #4 was replaced by `kingdom` in PR #7.)
+19. **Frontend work:** follow `docs/FRONTEND_SPEC.md` (Mudiam's spec). The campaign endpoints it relies on exist since PR #7, so the mock flag it describes is no longer needed. Store only `campaign_id` in `localStorage`.
+20. **Learning boss:** done in PR #7. The interface is `guard_reply(level, history, user_message, learned_attacks=None)`, and `learned_attacks` is a list of `{message, technique}` items for `learns` levels in campaigns (README, "Campaign rules").
 21. **Real-model run (next step for Mudiam and Aditya).** On Mudiam's laptop, with Ollama running:
     1. `cp .env.example .env`
     2. `pip install -r backend/requirements.txt`
@@ -186,8 +164,20 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 
     Paste the output into this file. `GET /api/health/ai` gives the reason if the guard is not ready. Frontend: you can use `GET /api/health/ai` for a "guard offline" notice.
 
+22. **Campaign decisions (PR #7, Aditya, 2026-10-08).** These answer the spec's section 9 questions. They are constants at the top of `backend/app/campaign.py`; the team can change them.
+    1. Respawn **after** the checkpoint (`RESPAWN_AFTER_CHECKPOINT = True`). Replaying the checkpoint is supported and tested, and does not pay its bonus twice.
+    2. Kingdom bonus **1000** (`KINGDOM_BONUS`), checkpoint bonus **500**.
+    3. Scores of levels before a loss are **kept**. The total counts each level once, at its best score, plus bonuses. The spec's "add each win to the total" would let a player farm points by winning level 4 and losing level 5 again and again.
+    4. **One campaign leaderboard** (`GET /api/campaigns/leaderboard`); no per-kingdom board.
+    5. Not in the spec, so decided here:
+       - Entering a completed campaign returns `409 level_finished`.
+       - A message to a campaign session whose level is no longer current returns `409 level_locked`.
+       - Free-play bosses get no `learned_attacks`.
+       - Scores and wins are only applied if the campaign is still on the level that ended.
+
 **Known integration issues:**
 - The Level 1 guard sometimes gives away the answer to its own question after a wrong reply (in character, but a second try can use it).
+- **Levels 1-6 were regenerated** by `tools/build_levels.py`. The real-model results in `levels/README.md` ("Status") and in the README's development status are for the earlier Map 1 prompts. Mudiam to re-run `tools/level_trials.py` and update them.
 - **There is no frontend in the repository yet** (no `frontend/` folder). This is the biggest risk for a working demo.
 - The frontend has not been tested against the real API.
 - `LICENSE` is still missing (required for submission).
@@ -207,9 +197,9 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 | `guard_reply` AI module | Mudiam | Ollama working | Implemented, unit tested, run against the real model | Completed and verified locally | Returns text; raises the two error types on failure |
 | Backend API | Aditya | Contract, level config, `guard_reply` | Run against the real model on Mudiam's laptop; then delete `tools/dev_server.py` (with Mudiam) | Implemented and tested with a fake guard (PR #2) | Endpoints match the contract; win check tested |
 | Merge `feature/ai-levels-map1` (level format v2, hint, score, echo guard) | Aditya (integration), reviewer: Mudiam | None | Merged with PR #3 on `integration/map1-levels` | Merged (PR #4) | Both test suites pass on `main`; frontend can read `character`, `opening`, `hint` |
-| Levels 4 to 30 (maps 2 to 5, bosses) | Mudiam | Map 1 pattern | Write guards per the domain list in the design (TrialMatch, TariffSense, SlotMaster, PolicyShield, GrantLedger, E-Waste DismantleCopilot); tune with `tools/level_trials.py` | Not started | Each level: wrong answer rarely wins, intended trick wins most trials |
-| Checkpoint and respawn flow | Aditya (API), Kirupashankar (UI) | Level 3 cleared | API done: `restart_level_id` and per-browser progress (PR #5). UI pending | API implemented and tested; UI not started | Three strikes send the player to the last checkpoint; checkpoint persists |
-| Pass earlier winning messages to learning guards | Aditya, Mudiam | Mudiam's `guard_reply` interface for learning guards | Agree on the interface (section D, item 20); wire `winning_messages` into the call | Storage done; wiring not started | The level-6 guard receives this player's earlier winning messages |
+| Levels 4 to 30 (maps 2 to 5, bosses) | Mudiam | Map 1 pattern | Written by `tools/build_levels.py` | Written; real-model tuning per kingdom pending | Each level: wrong answer rarely wins, intended trick wins most trials |
+| Campaign (checkpoints, respawn, bonuses, leaderboard) | Aditya (API), Kirupashankar (UI) | Level files (done) | API done in PR #7; UI per `docs/FRONTEND_SPEC.md` | API implemented and tested; UI not started | Losing level 5 after the checkpoint respawns at 4 with 3 lives; clearing 6 moves to 7 |
+| Pass earlier winning messages to learning guards | Aditya, Mudiam | `guard_reply` with `learned_attacks` (done) | Wired in PR #7 | Implemented and tested with a fake guard; real-model check pending | Each boss receives this campaign's kept wins in its kingdom only |
 | Frontend | Kirupashankar | Contract (can use mock responses first) | Choose framework; build screens | Not started | One level playable against the backend |
 | LICENSE and `.gitignore` | Shree Santh | None | Add MIT or Apache-2.0; ignore `.env`, caches | Not started | Files in repo root |
 | Demo, Devpost, OrganizerHQ submission | Shree Santh | Working build | Record video; submit before the deadline; tick Gemma 4 | Not started | Submitted before the window closes |
