@@ -86,3 +86,10 @@ class Leaderboard(BaseModel):
 
 class Health(BaseModel):
     status: str
+
+
+class AIHealth(BaseModel):
+    status: str
+    mode: Literal["stub", "ollama"]
+    model: Optional[str] = None
+    host: Optional[str] = None

@@ -12,12 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ai import guard
 
-from . import game, progress
-from .config import Settings
+from . import ai_status, game, progress
+from .config import Settings, load_env_file
 from .db import Database
 from .errors import APIError, install_error_handlers
 from .levels import load_levels, public_view, restart_level_id
 from .schemas import (
+    AIHealth,
     CreateSessionRequest,
     Health,
     Leaderboard,
@@ -34,10 +35,13 @@ def _default_guard(level, history, user_message):
     return guard.guard_reply(level, history, user_message)
 
 
-def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
+def create_app(settings: Optional[Settings] = None, guard_fn=None, ai_check=None) -> FastAPI:
     """Build the app. Tests pass their own settings (temp database) and a fake guard_fn."""
-    settings = settings or Settings()
+    if settings is None:
+        load_env_file()  # real runs only, so tests never pick up a developer's .env
+        settings = Settings()
     guard_fn = guard_fn or _default_guard
+    ai_check = ai_check or ai_status.check
     levels = load_levels(settings.levels_dir)
     db = Database(settings.database_path)
 
@@ -61,6 +65,14 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
     @app.get("/api/health", response_model=Health)
     def health():
         return {"status": "ok"}
+
+    @app.get("/api/health/ai", response_model=AIHealth)
+    def health_ai():
+        """Whether the guard can answer: stub mode, or Ollama reachable with the model pulled."""
+        try:
+            return {"status": "ok", **ai_check()}
+        except ai_status.AINotReady as e:
+            raise APIError(503, "ai_not_ready", str(e))
 
     @app.get("/api/levels", response_model=LevelList)
     def list_levels():

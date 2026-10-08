@@ -14,6 +14,8 @@ pip install -r backend/requirements.txt
 
 ## Run
 
+Settings come from environment variables. The easiest way is a `.env` file in the repository root: `cp .env.example .env`, then edit it. The backend loads it on startup. Variables set in the shell override the file, so the one-off commands below still work.
+
 Without a model, using the stub guard from `ai/guard.py` (good for frontend and backend development):
 
 ```bash
@@ -31,6 +33,25 @@ If Ollama runs on another laptop on the same network, add `OLLAMA_HOST=http://<t
 On Windows PowerShell, set variables first, for example `$env:GUARD_STUB="1"`, then run `uvicorn ...`.
 
 API docs, where you can try every endpoint: http://localhost:8000/docs
+
+Is the guard ready? `GET /api/health/ai` returns `200` with `mode` (`stub` or `ollama`), or `503 ai_not_ready` with the reason, for example "cannot reach Ollama at ..." or "model gemma4:e2b is not pulled".
+
+## End-to-end check with the real model
+
+With the backend running (and Ollama, unless `GUARD_STUB=1`), from the repository root:
+
+```bash
+python backend/scripts/e2e_check.py                         # backend on http://localhost:8000
+python backend/scripts/e2e_check.py --base http://<ip>:8000 --trials 3
+```
+
+It needs only Python, with no extra packages. It does three things:
+
+1. Checks that the guard is ready.
+2. Sends every attack in `levels/attacks.json` through the API and prints the win rate and average reply time for each.
+3. Plays the campaign as one browser player and prints the player's progress.
+
+Exit code: 0 if every request worked, 1 if any failed (including AI errors), 2 if the guard is not ready.
 
 ## Environment variables
 
@@ -53,6 +74,7 @@ No model is needed: the tests replace `guard_reply` with a fake. They cover:
 - the win check, the output filter and scoring
 - level file validation
 - every endpoint, and every error code (400, 404, 409, 502, 504)
+- `.env` loading (including that `.env.example` parses), and the readiness check against a fake Ollama: ready, model missing, unreachable, bad response
 - per-browser progress: level locking, wins and losses moving progress, replays, campaign score, two sessions finishing at once, upgrading older databases
 - campaign rules: checkpoint restarts, the hint, the echo guard, and the opening line staying out of the model's history
 - AI failures not using an attempt
@@ -69,6 +91,8 @@ No model is needed: the tests replace `guard_reply` with a fake. They cover:
 | ---- | ------- |
 | `app/main.py` | App factory and routes |
 | `app/progress.py` | Per-browser progress rules: locking, frontier moves, campaign score |
+| `app/ai_status.py` | Guard readiness check for `GET /api/health/ai` |
+| `scripts/e2e_check.py` | End-to-end check of a running backend |
 | `app/schemas.py` | Request and response models (the API contract) |
 | `app/game.py` | Output filter, win check, scoring (rules from `levels/README.md`) |
 | `app/levels.py` | Loads and validates `levels/level_<id>.json` |
