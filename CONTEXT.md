@@ -51,8 +51,8 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 | Date | Contributor | Component | Changes Made | Files Modified | Dependencies or Impact | Status |
 | ---- | ----------- | --------- | ------------ | -------------- | ---------------------- | ------ |
-| 2026-10-08 | Mudiam Hemanth Reddy | Docs | Rewrote README for Prompt Heist (proposed stack, architecture, API contract, status); added `CONTEXT.md`, `.env.example` | `README.md`, `CONTEXT.md`, `.env.example` | None (no code). Defines the proposed API contract that backend and frontend must confirm | Local, not committed (as of this entry) |
-| 2026-10-08 | Mudiam Hemanth Reddy | Docs | Added Prompt Heist README and per-role task plan | `README.md`, `docs/ROLES.md` | None | Committed locally, not pushed (as of this entry) |
+| 2026-10-08 | Mudiam Hemanth Reddy | Docs | Rewrote README for Prompt Heist (proposed stack, architecture, API contract, status); added `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | `README.md`, `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | None (no code). Defines the proposed API contract that backend and frontend must confirm | Pushed |
+| 2026-10-08 | Mudiam Hemanth Reddy | Docs | Added Prompt Heist README and per-role task plan | `README.md`, `docs/ROLES.md` | None | Pushed |
 | 2026-10-08 | Shree Santh B | Docs | Set team name to Team StromBreaker | `README.md` | None | Pushed |
 | 2026-10-08 | Shree Santh B | Docs | Updated contributors list in README | `README.md` | None | Pushed |
 | 2026-10-08 | Nitansh Shankar (BIJJUDAMA, organizers' template) | Docs | Added the repository structure (`AGENTS.md`, `CLAUDE.md`, `README.md` template) | `AGENTS.md`, `CLAUDE.md`, `README.md` | Template rules in `AGENTS.md` apply to all contributors | Pushed |
