@@ -33,6 +33,8 @@ AI security is a practical skill that the next generation of developers needs, a
 
 Prompt Heist is a level-based game. Each level has an AI "guard" that protects a fictional secret code word. The player chats with the guard and tries to make it reveal the secret. After each level, a debrief explains which technique worked or failed and how a real application would defend against it.
 
+The game starts with a **Training** map (the Corner Bank, Levels 1-3). The campaign follows in **Silicon Bastion**, where AI guards protect enterprise infrastructure and interrogate the player before each gate. Map 1, *The Civic Grids* (Levels 4-6), gives the player 3 strikes per gate and sends them back to a checkpoint when they lose. Full design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md).
+
 All targets are fictional and run locally. The goal is to build defenders, not attackers.
 
 ### Objectives
@@ -45,15 +47,17 @@ All targets are fictional and run locally. The goal is to build defenders, not a
 
 | Feature | Status |
 | ------- | ------ |
-| Chat with an AI guard powered by a local open-weight model | Planned |
-| Levels of increasing difficulty (target: 3, stretch: 5) | Planned |
-| Win detection by deterministic server-side code | Planned |
-| "What just happened?" debrief after each level (attack and defence) | Planned |
-| Scoring and leaderboard | Planned |
+| Chat with an AI guard powered by a local open-weight model | Backend and AI module built; no UI yet |
+| Training map: Levels 1-3, one technique each | Built; tuned on the real model |
+| Campaign Map 1 *The Civic Grids*: Levels 4-6 with guard interrogations, 3 strikes and checkpoints | Backend and level files built; not yet tested on the real model; no UI yet |
+| Win detection by deterministic server-side code | Built and tested |
+| "What just happened?" debrief after each level (attack and defence) | Text written for Levels 1-6; no UI yet |
+| Scoring and leaderboard | Backend built and tested; no UI yet |
+| Campaign Maps 2-5 (Bio-Archives, Trade Ports, Risk Ledgers, Scrap Wastes) | Planned (stretch) |
 | Defender mode: player writes the guard prompt and it is tested against stored attack messages | Planned (stretch) |
 | Tamil/English toggle, sound effects, shareable result card | Planned (stretch) |
 
-Nothing in this table is implemented yet. Update the Status column only when the feature has been built and verified.
+Update the Status column only when the feature has been built and verified.
 
 ## Innovation and Differentiation
 
@@ -170,7 +174,8 @@ Returns `200 {"status": "ok"}`.
 Returns the list of levels. Never includes the secret or the guard prompt.
 
 ```json
-{ "levels": [ { "id": 1, "title": "Rookie guard", "intro": "string", "max_attempts": 10 } ] }
+{ "levels": [ { "id": 4, "title": "The Hydro-Gate (AquaLeak Triage)", "intro": "string", "max_attempts": 3,
+                "map": 1, "map_title": "The Civic Grids", "checkpoint": true, "opening": "string" } ] }
 ```
 
 ### `POST /api/sessions`
@@ -207,11 +212,12 @@ Response `200`:
   "attempts_remaining": 9,
   "status": "in_progress",
   "score": null,
-  "debrief": null
+  "debrief": null,
+  "restart_level_id": null
 }
 ```
 
-`status` is one of `in_progress`, `won`, `lost`. When `status` is `won` or `lost`, `debrief` is an object `{ "title": "string", "technique": "string", "defence": "string" }` and `score` is set when won.
+`status` is one of `in_progress`, `won`, `lost`. When `status` is `won` or `lost`, `debrief` is an object `{ "title": "string", "technique": "string", "defence": "string" }` and `score` is set when won. When `status` is `lost`, `restart_level_id` is the level the player should restart from (the map's nearest checkpoint, or the same level); otherwise it is `null`.
 
 ### `GET /api/leaderboard?level_id=1`
 
