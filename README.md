@@ -17,6 +17,8 @@ Built for Hacktoberfest Hack Day, Coimbatore 2026 (INIT Club x iDEA Club, with M
 | Aditya S | Backend | FastAPI backend, SQLite storage, campaign rules, integration of the AI module, tests ([details](#team-contributions)) |
 | Kirupashankar Chockkanathan | Frontend | The React game UI: world map, kingdom maps, encounter screen ([details](#team-contributions)) |
 
+Names in the Git history: Aditya S appears as `Adi-0202` and `Aditya S`, Kirupashankar as `kirupashankarchockkanathan`, Shree Santh B as `Shree Santh B`, Mudiam Hemanth Reddy as `Mudiam Hemanth Reddy`. The template was created by Nitansh Shankar (organizers).
+
 Detailed task lists per role: [docs/ROLES.md](docs/ROLES.md). Backend campaign spec: [docs/BACKEND_CAMPAIGN_SPEC.md](docs/BACKEND_CAMPAIGN_SPEC.md). Frontend spec: [docs/FRONTEND_SPEC.md](docs/FRONTEND_SPEC.md). Shared change log and integration checklist: [CONTEXT.md](CONTEXT.md).
 
 ## Project Overview
@@ -623,24 +625,24 @@ MIT License. See [LICENSE](LICENSE). The Gemma model and Ollama keep their own l
 
 ## Submission Checklist
 
-- [ ] Project title and description added
-- [ ] All team members listed
-- [ ] Problem clearly explained
-- [ ] Reason for choosing the problem explained
-- [ ] Solution and key features documented
-- [ ] Innovation and differentiation explained
-- [ ] Architecture included
-- [ ] Technical implementation documented
-- [ ] Work completed during the hackathon documented
-- [ ] Team contributions documented
-- [ ] Working application is functional
-- [ ] Live application link added where applicable
-- [ ] Demo video added
-- [ ] AI and open-source components documented
-- [ ] Setup and usage instructions tested
-- [ ] Challenges and learnings documented
-- [ ] Devpost submission completed
-- [ ] Devpost link added
-- [ ] Credits added
-- [ ] License added
-- [ ] Repository is organized and complete
+- [x] Project title and description added
+- [x] All team members listed
+- [x] Problem clearly explained
+- [x] Reason for choosing the problem explained
+- [x] Solution and key features documented
+- [x] Innovation and differentiation explained
+- [x] Architecture included
+- [x] Technical implementation documented
+- [x] Work completed during the hackathon documented
+- [x] Team contributions documented
+- [x] Working application is functional (runs locally; all 30 levels played in a browser)
+- [ ] Live application link added where applicable (no deployment yet; see docs/DEPLOY.md)
+- [ ] Demo video added (not recorded yet; script in docs/DEMO_SCRIPT.md)
+- [x] AI and open-source components documented
+- [x] Setup and usage instructions tested (the backend steps from a fresh clone by Aditya, the full game by Mudiam; not yet by someone outside the team)
+- [x] Challenges and learnings documented
+- [ ] Devpost submission completed (not yet)
+- [ ] Devpost link added (not yet)
+- [x] Credits added
+- [x] License added
+- [x] Repository is organized and complete

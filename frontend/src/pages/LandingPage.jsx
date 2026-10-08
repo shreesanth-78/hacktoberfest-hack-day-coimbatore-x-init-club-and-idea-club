@@ -44,6 +44,7 @@ export default function LandingPage() {
         <p className="eyebrow">An Open-Source AI Hackathon Adventure</p>
         <h1>PROMPT HEIST</h1>
         <p className="lede">Travel through five ancient kingdoms. Outwit the guardians at six gates in each. Learn how clever words can break clumsy defences — and how real systems should guard their secrets.</p>
+        <p className="responsible-note" role="note"><b>Notice:</b> Prompt Heist is an educational AI-safety simulator. Every system, character and secret in it is fictional. Only test real systems you own or have explicit permission to test.</p>
         {game.hasGame && game.playerName ? (
           <div className="landing-actions">
             <p className="welcome-back">Welcome back, <b>{game.playerName}</b>.</p>
