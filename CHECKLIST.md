@@ -64,6 +64,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] API tests for every endpoint and error code (400/404/409/502/504)
 - [x] Tested against the real model on Mudiam's laptop: the full 30-level campaign completes through the real backend (`docs/e2e_real_model_run.txt`). `tools/dev_server.py` can now be deleted
 - [x] Backend run commands written in the README and tested
+- [x] Backend setup tested from a fresh GitHub clone; network demo setup (`--host 0.0.0.0` and `CORS_ORIGINS`) tested
+- [x] Backend parts of the README written: implementation, contributions, challenges and learnings
 - [x] Campaign support: map and checkpoint fields, checkpoint restart, hint, echo guard, secret-leak checks on opening, hint and debrief
 - [x] Campaign API (`/api/campaigns`): checkpoints, respawn, lives reset, bonuses, completion, leaderboard, saved per browser (replaces the earlier players/progress endpoints)
 - [x] `.env` loaded on startup; `GET /api/health/ai` readiness check; `backend/scripts/e2e_check.py` end-to-end script
@@ -88,7 +90,7 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 
 - [ ] Frontend, backend, and AI module run together locally
 - [ ] One full level played end to end (start, chat, win, debrief, leaderboard)
-- [ ] Setup instructions in the README tested by someone who did not write them
+- [ ] Setup instructions in the README tested by someone who did not write them (backend steps tested from a fresh clone by their author, Aditya; still needs someone else, ideally on Windows)
 - [ ] No component breaks another after merging
 
 ## 7. Docs and submission (Shree Santh B)
