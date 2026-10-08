@@ -14,9 +14,10 @@ RUN apt-get update \
 
 # Hugging Face runs Docker Spaces as user 1000
 RUN useradd -m -u 1000 user
+# OLLAMA_HOST must include http:// : the game's AI module builds its URLs from it (Ollama accepts that form too).
 ENV HOME=/home/user \
     OLLAMA_MODELS=/home/user/.ollama/models \
-    OLLAMA_HOST=127.0.0.1:11434 \
+    OLLAMA_HOST=http://127.0.0.1:11434 \
     OLLAMA_KEEP_ALIVE=-1 \
     OLLAMA_NUM_PARALLEL=1 \
     OLLAMA_MODEL=gemma4:e2b \
@@ -41,10 +42,13 @@ ARG CACHE_BUST=1
 RUN git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" app && chmod +x app/deploy/huggingface/start.sh
 
 # Download the model into the image, so a restart does not have to fetch 4.6 GB again.
-RUN (ollama serve > /tmp/ollama-build.log 2>&1 &) \
-    && i=0; while [ "$i" -lt 60 ] && ! curl -sf http://127.0.0.1:11434/api/tags > /dev/null; do i=$((i+1)); sleep 1; done \
-    && ollama pull gemma4:e2b \
-    && pkill ollama || true
+# A failed download must FAIL the build (never hide it), otherwise the Space would start with no model.
+RUN ollama serve > /tmp/ollama-build.log 2>&1 & \
+    i=0; while [ "$i" -lt 60 ] && ! curl -sf http://127.0.0.1:11434/api/tags > /dev/null; do i=$((i+1)); sleep 1; done; \
+    ollama pull gemma4:e2b; pull_status=$?; \
+    ollama list; \
+    pkill ollama || true; \
+    exit $pull_status
 
 EXPOSE 7860
 CMD ["/home/user/app/deploy/huggingface/start.sh"]
