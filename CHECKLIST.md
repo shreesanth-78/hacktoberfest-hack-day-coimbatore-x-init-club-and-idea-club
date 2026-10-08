@@ -23,21 +23,21 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] README, CONTEXT.md, CHECKLIST.md, .env.example pushed to GitHub
 - [ ] Everyone has cloned the repo and set their Git name and email
 - [ ] `.gitignore` added (ignores `.env`, caches, build output)
-- [ ] Ollama installed on the team laptops
-- [ ] Gemma variant chosen, pulled, and confirmed to run
-- [ ] Level config format agreed (AI owner and backend owner)
+- [ ] Ollama installed on the team laptops (done on Mudiam's laptop only)
+- [x] Gemma variant chosen (`gemma4:e2b`), pulled, and confirmed to run (Mudiam's laptop)
+- [ ] Level config format agreed (written in `levels/README.md`; Aditya must confirm)
 - [ ] API contract confirmed (backend owner and frontend owner)
 - [ ] Frontend framework chosen
 
 ## 3. AI and levels (Mudiam Hemanth Reddy)
 
 - [ ] Gemma model card and license read; link added to README
-- [ ] `guard_reply` module written and tested
-- [ ] Level 1 guard prompt and fake secret
-- [ ] Level 2 guard prompt and fake secret
-- [ ] Level 3 guard prompt and fake secret
-- [ ] Debrief text for each level (technique and defence)
-- [ ] Each level hand-tested for difficulty
+- [x] `guard_reply` module written and tested
+- [x] Level 1 guard prompt and fake secret
+- [x] Level 2 guard prompt and fake secret
+- [x] Level 3 guard prompt and fake secret
+- [x] Debrief text for each level (technique and defence) (Levels 1-3)
+- [ ] Each level hand-tested for difficulty (first pass done; needs more)
 - [ ] Test attack messages saved for each level
 - [ ] Stretch: Levels 4 and 5
 

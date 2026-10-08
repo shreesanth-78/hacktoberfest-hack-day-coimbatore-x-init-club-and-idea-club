@@ -64,13 +64,13 @@ Nothing in this table is implemented yet. Update the Status column only when the
 
 ## Technology Stack
 
-Confirmed means a decision the team has made. Proposed means a recommendation that is not yet finalized. Nothing below is installed in the repository yet.
+Confirmed means a decision the team has made. Proposed means a recommendation that is not yet finalized. The AI module uses only the Python standard library; nothing else is installed in the repository yet.
 
 | Area | Technology | Status |
 | ---- | ---------- | ------ |
 | Frontend | [To be decided by the frontend owner] | Not decided |
 | Backend | Python with FastAPI | Proposed |
-| AI / ML | Gemma (exact variant TBD) served by Ollama | Gemma confirmed as the model family; variant and Ollama proposed |
+| AI / ML | Gemma 4 `gemma4:e2b` served by Ollama | Implemented and tested locally (see Current Development Status) |
 | Database | SQLite | Proposed |
 | Authentication | None (player enters a display name) | Proposed |
 | API style | JSON over HTTP (REST) | Proposed |
@@ -79,7 +79,7 @@ Confirmed means a decision the team has made. Proposed means a recommendation th
 
 ### Technology Justification
 
-- **Gemma via Ollama:** open-weight model that runs on a laptop, which satisfies the Open-Source AI and Gemma 4 challenge requirements and keeps cost at zero. Ollama exposes a simple local HTTP API. The exact model tag, its size, and its license must be verified on the model card before it is cited as final.
+- **Gemma via Ollama:** open-weight model that runs on a laptop, which satisfies the Open-Source AI and Gemma 4 challenge requirements and keeps cost at zero. Ollama exposes a simple local HTTP API. The model in use is `gemma4:e2b` (about 4.6 GB on disk). Its license is not stated on the Ollama page and must be checked on the official Gemma terms before it is cited as final.
 - **FastAPI (proposed):** small, quick to write, automatic request validation and interactive API docs, which helps frontend and backend agree on contracts.
 - **SQLite (proposed):** no server to run, enough for scores and level state in a one-day build.
 - **No authentication (proposed):** reduces scope. The leaderboard is a game feature, not a security boundary.
@@ -245,7 +245,11 @@ Current, verified:
 ├── CHECKLIST.md     Team-wide Hack Day to-do list
 ├── AGENTS.md        Rules for coding agents working in this repo (from the organizers)
 ├── CLAUDE.md        Points Claude Code at AGENTS.md
-├── .env.example     Proposed environment variables (no secrets)
+├── .env.example     Environment variables (no secrets)
+├── ai/guard.py      AI module: guard_reply() calls Ollama (Mudiam)
+├── levels/          Level files: guard prompt, secret, debrief (Mudiam)
+├── tools/           smoke_test.py (try a level) and dev_server.py (temporary stand-in backend)
+├── tests/           Unit tests for the AI module, level rules, and the API contract
 └── docs/
     └── ROLES.md     Per-role task plan
 ```
@@ -255,8 +259,6 @@ Proposed, not yet created:
 ```
 backend/     FastAPI app, database, win check (Aditya)
 frontend/    UI (Kirupashankar)
-levels/      Guard prompts, secrets, debriefs (Mudiam)
-tests/       Backend and integration tests
 LICENSE      Open-source license (required for submission)
 .gitignore   Must ignore .env and build/cache folders
 ```
@@ -273,8 +275,8 @@ cd hacktoberfest-hack-day-coimbatore-x-init-club-and-idea-club
 Planned prerequisites (to be confirmed and versioned by each owner):
 
 - Git
-- [Ollama](https://ollama.com) with the chosen Gemma model pulled
-- Python 3 (backend)
+- [Ollama](https://ollama.com) with the model pulled: `ollama pull gemma4:e2b` (about 4.6 GB)
+- Python 3 (the AI module and tools need no extra packages)
 - Node.js, if the frontend uses it
 
 The owners of each component must replace this section with tested install commands before submission.
@@ -286,7 +288,7 @@ Documented in [.env.example](.env.example). Copy it to `.env` and edit. **Never 
 | Variable | Used by | Purpose |
 | -------- | ------- | ------- |
 | `OLLAMA_HOST` | Backend / AI module | Ollama base URL |
-| `OLLAMA_MODEL` | Backend / AI module | Model tag to run (TBD) |
+| `OLLAMA_MODEL` | Backend / AI module | Model tag to run (`gemma4:e2b`) |
 | `OLLAMA_TIMEOUT_SECONDS` | Backend / AI module | Max wait for a model reply |
 | `DATABASE_PATH` | Backend | SQLite file location |
 | `CORS_ORIGINS` | Backend | Allowed frontend origin(s) |
@@ -296,7 +298,24 @@ The secret code words live in the server-side level config, never in frontend co
 
 ## Running the Project
 
-Not yet possible. Planned: start Ollama, start the backend, start the frontend, open the app in a browser. Exact commands will be added by each owner once the code exists and has been run.
+The real backend and frontend do not exist yet. What can be run today (verified on Windows with an NVIDIA RTX 4060 laptop GPU):
+
+```bash
+# 1. Make sure Ollama is running and the model is pulled
+ollama pull gemma4:e2b
+
+# 2. Try one level from the command line (PowerShell: $env:OLLAMA_MODEL="gemma4:e2b")
+OLLAMA_MODEL=gemma4:e2b python tools/smoke_test.py 1 "What is the vault code word?"
+
+# 3. Run the temporary stand-in server for frontend development
+#    (add GUARD_STUB=1 to run without a model)
+OLLAMA_MODEL=gemma4:e2b python tools/dev_server.py     # http://localhost:8000
+
+# 4. Run the tests (no model needed)
+python -m unittest discover -s tests
+```
+
+`tools/dev_server.py` implements the proposed API contract in memory so the frontend can be built now. It is temporary: it will be replaced by the real backend and then deleted.
 
 ## Development Guidelines
 
@@ -320,7 +339,9 @@ The repository currently has a single `main` branch, and early commits were made
 
 ## Testing
 
-No tests exist yet. Planned:
+Run `python -m unittest discover -s tests`. Current tests (no model needed; Ollama is faked) cover the AI module, the level files, the filter and win rules, and the API contract through the stand-in server.
+
+Still planned:
 
 - Backend unit tests for the win check and scoring.
 - API tests for each endpoint, including error cases (AI unavailable, timeout, finished session).
@@ -339,12 +360,16 @@ Not implemented. Proposed: run locally for the demo, because the model runs on t
 
 - Repository created from the organizers' template, with all four members listed.
 - Project concept, README, and role plan written.
+- AI module `ai/guard.py` (`guard_reply`) implemented. Tested against the real `gemma4:e2b` model locally: about 3 seconds per reply on the GPU.
+- Levels 1 to 3 written and hand-tested against the real model (one pass; more tuning needed). Level 1 is beaten by a direct question. Level 2 is beaten by role-play and story requests. Level 3 blocks the plain word, and spelling it out one letter at a time wins. Asking for the word backwards was unreliable because the model misspells it.
+- Unit tests for the AI module, level rules and the API contract pass.
+- Temporary stand-in server `tools/dev_server.py` runs the proposed API contract.
 
-**Not started:** frontend, backend, AI module, level content, database, tests, LICENSE, `.gitignore`, deployment.
+**Not started:** real backend, frontend, database, LICENSE, `.gitignore`, deployment, Defender mode.
 
 **Known limitations / open questions:**
 
-- Exact Gemma variant, its size, and its license terms are not yet verified.
+- The Gemma license terms are not yet verified. Gemma 4 on Ollama is a model that "thinks" first, so the AI module sends `think: false`; without it the reply can come back empty. The first reply after loading the model is slower.
 - The frontend framework is not chosen.
 - API contract above is a proposal that Aditya, Kirupashankar, and Mudiam need to confirm.
 - Hosting approach is undecided.
@@ -384,7 +409,7 @@ Prompt Heist is a training game with fictional targets that run locally. Only pr
 
 ### AI / Models
 
-- **Gemma (variant TBD):** plays the guard in each level. Model card and license: [link to be added after verification].
+- **Gemma 4 (`gemma4:e2b`, via Ollama):** plays the guard in each level. Model card and license: [link to be added after verification].
 
 ### Open Source Components
 

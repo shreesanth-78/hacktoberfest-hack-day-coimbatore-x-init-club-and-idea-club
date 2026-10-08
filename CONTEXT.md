@@ -10,7 +10,7 @@ Rule for this file: record only what is true. Use `Not specified` when unknown. 
 
 **Overview.** Prompt Heist is a browser game. The player chats with an AI "guard" that protects a fictional secret and tries to make it reveal the secret. A debrief then explains the technique and the defence. Goal: teach prompt-injection concepts safely, with a local open-weight model. Full description: [README.md](README.md).
 
-**Current state (verified from the repository):** documentation only. No frontend, backend, AI, database, or test code exists yet.
+**Current state (verified from the repository):** documentation, the AI module (`ai/guard.py`), level files, tests, and a temporary stand-in server (`tools/dev_server.py`). There is no real backend, frontend, or database yet.
 
 **Planned architecture** (proposed, not implemented):
 
@@ -33,7 +33,8 @@ Frontend (browser)  --JSON/HTTP-->  Backend API  --in-process-->  AI module  --H
 | `AGENTS.md`, `CLAUDE.md` | Rules for coding agents (from the organizers) | Yes |
 | `docs/ROLES.md` | Per-role task plan | Yes |
 | `.env.example` | Proposed environment variables | Yes |
-| `backend/`, `frontend/`, `levels/`, `tests/` | Application code | No (proposed) |
+| `ai/guard.py`, `levels/`, `tests/`, `tools/` | AI module, level files, tests, smoke test and stand-in server | Yes |
+| `backend/`, `frontend/` | Real backend and frontend | No (proposed) |
 | `LICENSE`, `.gitignore` | Required for submission and secret safety | No |
 
 **Component relationships**
@@ -51,6 +52,7 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 | Date | Contributor | Component | Changes Made | Files Modified | Dependencies or Impact | Status |
 | ---- | ----------- | --------- | ------------ | -------------- | ---------------------- | ------ |
+| 2026-10-08 | Mudiam Hemanth Reddy | AI / integration | Added `guard_reply` (Ollama, `think: false`), Levels 1-3 with debriefs, `output_filter` field and win/filter rules, smoke test, TEMPORARY stand-in server implementing the API contract, 18 tests. Pulled `gemma4:e2b` and tested on the real model | `ai/guard.py`, `levels/*`, `tools/smoke_test.py`, `tools/dev_server.py`, `tests/*`, `.env.example`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New field `output_filter` in level files (Aditya must apply the rules in `levels/README.md`). Frontend can use `tools/dev_server.py` as a mock. Needs Ollama and the model on any machine that runs the real AI | Implemented and tested locally; push pending (see Git) |
 | 2026-10-08 | Mudiam Hemanth Reddy | Docs | Rewrote README for Prompt Heist (proposed stack, architecture, API contract, status); added `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | `README.md`, `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | None (no code). Defines the proposed API contract that backend and frontend must confirm | Pushed |
 | 2026-10-08 | Mudiam Hemanth Reddy | Docs | Added Prompt Heist README and per-role task plan | `README.md`, `docs/ROLES.md` | None | Pushed |
 | 2026-10-08 | Shree Santh B | Docs | Set team name to Team StromBreaker | `README.md` | None | Pushed |
@@ -78,13 +80,14 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 ### AI Development (Mudiam Hemanth Reddy)
 
-- Models/frameworks: Gemma (variant TBD) via Ollama. Not yet installed or verified on the team's machines.
-- Prompts, pipelines: none written yet.
+- Models/frameworks: Gemma 4 `gemma4:e2b` via Ollama 0.40.1. Installed and verified on Mudiam's machine (RTX 4060 8 GB, 100% GPU, about 3 s per reply). Not yet verified on the other members' machines.
+- Prompts, pipelines: guard prompts for Levels 1-3 written and tuned in `levels/`. One tuning pass against the real model: stricter first drafts made Levels 2 and 3 unwinnable, so they were relaxed.
 - Input format: guard prompt, session history, new user message. Output: plain text reply (length-capped).
 - Backend integration: AI module runs inside the backend and exposes `guard_reply(level, history, user_message) -> str`, raising `AIUnavailableError` or `AITimeoutError`.
 - Configuration: `OLLAMA_HOST`, `OLLAMA_MODEL`, `OLLAMA_TIMEOUT_SECONDS`.
 - Error handling, latency: a failed call must not consume a player attempt; latency on team laptops is unmeasured.
-- Pending: install and verify the model and its license; write Levels 1 to 3 (prompt, fake secret, debrief); manual difficulty testing; level config format agreed with Aditya.
+- Done: model installed and verified; Levels 1-3 written; `guard_reply` implemented and unit tested; level format written in `levels/README.md`.
+- Pending: check the Gemma license; more difficulty testing (model output varies); Aditya confirms the level format and the filter/win rules; optional Levels 4-5; test on other team laptops.
 
 ### Docs, demo, submission (Shree Santh B)
 
@@ -103,7 +106,9 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 3. The secret and guard prompt never leave the server.
 4. Error format: `{"error": {"code", "message"}}`; statuses 400, 404, 409, 502, 504.
 5. A failed AI call does not consume an attempt.
-6. Level config format (where prompts, secrets, debriefs live): **not yet defined**. Mudiam and Aditya must agree on it first.
+6. Level config format: defined in `levels/README.md` (proposal, includes `output_filter`). Aditya must confirm it and the filter/win rules.
+7. `tools/dev_server.py` is a TEMPORARY stand-in for the backend. Delete it once the real backend passes `tests/test_dev_server.py`-style checks.
+8. Gemma 4 on Ollama needs `think: false` or replies can be empty (found while testing).
 
 **Known integration issues:** none observed yet, because nothing is built. Risk to watch: the frontend and backend building against different assumptions about the contract in the README.
 
@@ -114,10 +119,10 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 | Task | Owner | Depends on | Next steps | Status | Acceptance criteria |
 | ---- | ----- | ---------- | ---------- | ------ | ------------------- |
 | Confirm the API contract in the README | Aditya, Kirupashankar | None | Review README "API Documentation"; edit it and log changes in section B | Not started | Both owners agree; README matches what is built |
-| Define level config format | Mudiam, Aditya | None | Choose file format and fields (id, title, intro, guard prompt, secret, max attempts, debrief) | Not started | Example level file in `levels/`; backend can load it |
-| Install Ollama and verify Gemma variant and license | Mudiam | None | Pull model, run a prompt, read model card | Not started | Model replies locally; license link added to README |
-| Write Levels 1 to 3 | Mudiam | Level config format | Write prompts, fake secrets, debriefs; test by hand | Not started | Level 1 beatable easily, Level 3 hard but possible |
-| `guard_reply` AI module | Mudiam | Ollama working | Implement and unit test with a stub | Not started | Returns text; raises the two error types on failure |
+| Define level config format | Mudiam, Aditya | None | Format written in `levels/README.md` | Waiting for Aditya to confirm | Example level files in `levels/`; backend can load them |
+| Install Ollama and verify Gemma variant and license | Mudiam | None | Model pulled and run | Model done; license check pending | Model replies locally (done); license link added to README (pending) |
+| Write Levels 1 to 3 | Mudiam | Level config format | Written and hand-tested once | In progress (more tuning) | Level 1 beatable easily, Level 3 hard but possible |
+| `guard_reply` AI module | Mudiam | Ollama working | Implemented, unit tested, run against the real model | Completed and verified locally | Returns text; raises the two error types on failure |
 | Backend API | Aditya | Contract, level config, `guard_reply` | Build endpoints, win check, scoring, SQLite | Not started | Endpoints match the contract; win check tested |
 | Frontend | Kirupashankar | Contract (can use mock responses first) | Choose framework; build screens | Not started | One level playable against the backend |
 | LICENSE and `.gitignore` | Shree Santh | None | Add MIT or Apache-2.0; ignore `.env`, caches | Not started | Files in repo root |
@@ -131,7 +136,7 @@ Tick only with evidence (code merged and verified).
 
 - [ ] Frontend implementation
 - [ ] Backend implementation
-- [ ] AI implementation
+- [ ] AI implementation (`guard_reply` done and verified; levels still being tuned)
 - [ ] Database integration
 - [ ] Frontend-backend API integration
 - [ ] Backend-AI integration
