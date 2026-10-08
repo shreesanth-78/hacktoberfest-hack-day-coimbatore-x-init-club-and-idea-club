@@ -161,6 +161,7 @@ Conventions: JSON, `snake_case` field names, base path `/api`.
 | 400 | `invalid_request` | Missing or invalid field, or message too long |
 | 404 | `not_found` | Unknown level or session |
 | 409 | `level_finished` | Session already won or out of attempts |
+| 409 | `level_locked` | The player has not reached this level yet (only when `player_id` is sent) |
 | 502 | `ai_unavailable` | Ollama unreachable or returned an invalid response |
 | 504 | `ai_timeout` | Model did not answer within the timeout |
 
@@ -180,6 +181,43 @@ Returns the list of levels. Never includes the secret or the guard prompt.
                 "opening": "string (the guard's scripted first line)", "max_attempts": 3 } ] }
 ```
 
+### `POST /api/players`
+
+Creates a player for this browser. No request body. Response `201`:
+
+```json
+{ "player_id": "string" }
+```
+
+The frontend stores `player_id` (for example in `localStorage`) and sends it when starting sessions. Progress is per browser: clearing the browser's storage starts a new campaign. There is no login.
+
+### `GET /api/players/{player_id}/progress`
+
+Response `200` (`404 not_found` for an unknown player):
+
+```json
+{
+  "player_id": "string",
+  "current_level_id": 2,
+  "completed": false,
+  "campaign_score": 1000,
+  "levels": [
+    { "level_id": 1, "status": "cleared", "best_score": 1000 },
+    { "level_id": 2, "status": "unlocked", "best_score": null },
+    { "level_id": 3, "status": "locked", "best_score": null }
+  ]
+}
+```
+
+Progress rules:
+
+- The player's current level is unlocked, earlier levels are cleared, and later levels are locked.
+- Winning the current level unlocks the next one.
+- Losing it sends the player back to its checkpoint (`restart_level_id`), and levels after the checkpoint are no longer cleared.
+- Replaying a cleared level never changes progress.
+- `campaign_score` is the sum of best scores on cleared levels.
+- When every level is cleared, `completed` is `true` and `current_level_id` is `null`.
+
 ### `POST /api/sessions`
 
 Starts a play session for a level.
@@ -187,8 +225,10 @@ Starts a play session for a level.
 Request:
 
 ```json
-{ "level_id": 1, "player_name": "string, 1-30 characters" }
+{ "level_id": 1, "player_name": "string, 1-30 characters", "player_id": "string (optional)" }
 ```
+
+With `player_id`, the level must be unlocked for that player (`409 level_locked` otherwise), and finishing the session updates their progress. Without it, any level can be played and no progress is kept.
 
 Response `201`:
 

@@ -64,6 +64,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted (real-model run passed on branch `feature/ai-levels-map1`; waiting for the merge)
 - [x] Backend run commands written in the README and tested
 - [x] Campaign support: map and checkpoint fields, checkpoint restart, hint, echo guard, secret-leak checks on opening, hint and debrief
+- [x] Per-browser progress: players, level locking, progress endpoint, campaign score, migration for older databases
+- [ ] Earlier winning messages passed to learning guards (waiting for the AI interface)
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
@@ -76,6 +78,7 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Leaderboard screen
 - [ ] Levels grouped by `map`; guard `character`, `setting` and `opening` shown before the first message; strikes shown; `hint` shown when present
 - [ ] On loss, "restart from checkpoint" uses `restart_level_id`
+- [ ] `player_id` from `POST /api/players` kept in `localStorage` and sent with sessions; map screen built from the progress endpoint
 - [ ] Responsible-use notice before the first level
 - [ ] Readable on a laptop or projector
 
