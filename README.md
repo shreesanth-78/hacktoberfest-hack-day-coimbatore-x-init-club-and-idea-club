@@ -64,8 +64,6 @@ All targets are fictional and run locally. The goal is to build defenders, not a
 | Player-name screen | Built |
 | Scoring and leaderboard | Built. Scoring and the leaderboard in the backend, and a leaderboard screen in the UI |
 | Campaign kingdoms 2-5 (Bio-Archives, Trade Ports, Risk Ledgers, Scrap Wastes) | Built. All 30 levels are written and tested (the domain content of kingdoms 4 and 5 is a draft) |
-| Defender mode: player writes the guard prompt and it is tested against stored attack messages | **Not built** (stretch goal) |
-| Tamil/English toggle, sound effects, shareable result card | **Not built** (stretch goal) |
 
 Update the Status column only when the feature has been built and verified.
 
