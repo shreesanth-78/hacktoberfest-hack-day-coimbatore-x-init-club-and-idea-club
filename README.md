@@ -9,10 +9,10 @@
 
 | Member | Contribution   |
 | ------ | -------------- |
-| [Name] | [Contribution] |
-| [Name] | [Contribution] |
-| [Name] | [Contribution] |
-| [Name] | [Contribution] |
+| Shree Santh B | [Contribution] |
+| Mudiam Hemanth Reddy| [Contribution] |
+| Aditya S | [Contribution] |
+| Kirupashankar Chockkanathan| [Contribution] |
 
 
 ## Problem Statement
