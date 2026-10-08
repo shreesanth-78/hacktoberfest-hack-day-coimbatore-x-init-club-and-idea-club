@@ -33,15 +33,17 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 
 ## 3. AI and levels (Mudiam Hemanth Reddy)
 
-- [ ] Gemma model card and license read; link added to README
+- [ ] Gemma model card and license read; link added to README (Google describes Gemma 4 as Apache 2.0; still to confirm on the model's own license file)
 - [x] `guard_reply` module written and tested
 - [x] Level 1 guard prompt and fake secret
 - [x] Level 2 guard prompt and fake secret
 - [x] Level 3 guard prompt and fake secret
-- [x] Debrief text for each level (technique and defence) (Levels 1-3)
-- [ ] Each level hand-tested for difficulty (first pass done; needs more)
-- [ ] Test attack messages saved for each level
-- [ ] Stretch: Levels 4 and 5
+- [x] Debrief text for each level (technique, vulnerability, defence) (Levels 1-3)
+- [x] Each level tested for difficulty against the real model, 6 trials per attack (Levels 1-3; see `levels/README.md`)
+- [x] Test attack messages saved for each level (`levels/attacks.json`, run with `tools/level_trials.py`)
+- [x] 30 level files (5 kingdoms x 6) with checkpoints at position 3 and learning bosses at position 6 (`tools/build_levels.py`)
+- [ ] All 5 kingdoms tuned on the real model with `tools/level_trials.py` (results recorded in `levels/README.md`)
+- [ ] Levels 4 to 30 (maps 2 to 5, bosses; the new design plans 30 levels)
 
 ## 4. Backend (Aditya S)
 
@@ -60,8 +62,15 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Unit tests for the win check and scoring
 - [ ] Secret never appears in responses or logs (tested for `/api/levels` and filtered replies; server log has no bodies; recheck with the real model)
 - [x] API tests for every endpoint and error code (400/404/409/502/504)
-- [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted
+- [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted (real-model run passed on branch `feature/ai-levels-map1`; waiting for the merge)
 - [x] Backend run commands written in the README and tested
+- [x] Backend setup tested from a fresh GitHub clone; network demo setup (`--host 0.0.0.0` and `CORS_ORIGINS`) tested
+- [x] Backend parts of the README written: implementation, contributions, challenges and learnings
+- [x] Campaign support: map and checkpoint fields, checkpoint restart, hint, echo guard, secret-leak checks on opening, hint and debrief
+- [x] Campaign API (`/api/campaigns`): checkpoints, respawn, lives reset, bonuses, completion, leaderboard, saved per browser (replaces the earlier players/progress endpoints)
+- [x] `.env` loaded on startup; `GET /api/health/ai` readiness check; `backend/scripts/e2e_check.py` end-to-end script
+- [ ] `e2e_check.py` run against the real model on Mudiam's laptop, output recorded in CONTEXT.md
+- [x] Learning bosses receive this campaign's kept winning messages in their kingdom (`learned_attacks`)
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
@@ -72,6 +81,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Error handling and retry on AI errors
 - [ ] Debrief screen
 - [ ] Leaderboard screen
+- [ ] Screens and API calls from `docs/FRONTEND_SPEC.md` (map of 5 kingdoms, gate encounter, hint banner, victory/debrief, lethal and respawn, kingdom cleared, campaign leaderboard)
+- [ ] `campaign_id` kept in `localStorage`; reloading the page resumes the campaign
 - [ ] Responsible-use notice before the first level
 - [ ] Readable on a laptop or projector
 
@@ -79,7 +90,7 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 
 - [ ] Frontend, backend, and AI module run together locally
 - [ ] One full level played end to end (start, chat, win, debrief, leaderboard)
-- [ ] Setup instructions in the README tested by someone who did not write them
+- [ ] Setup instructions in the README tested by someone who did not write them (backend steps tested from a fresh clone by their author, Aditya; still needs someone else, ideally on Windows)
 - [ ] No component breaks another after merging
 
 ## 7. Docs and submission (Shree Santh B)
