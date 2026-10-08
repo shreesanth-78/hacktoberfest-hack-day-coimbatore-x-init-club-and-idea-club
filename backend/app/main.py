@@ -32,13 +32,6 @@ def _default_guard(level, history, user_message):
     return guard.guard_reply(level, history, user_message)
 
 
-def _history_with_opening(level, history):
-    """The guard's scripted opening line counts as its first message, so the model continues from it."""
-    if level["opening"]:
-        return [{"role": "assistant", "content": level["opening"]}] + history
-    return history
-
-
 def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
     """Build the app. Tests pass their own settings (temp database) and a fake guard_fn."""
     settings = settings or Settings()
@@ -90,7 +83,7 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
             level = levels[session["level_id"]]
 
             try:
-                reply = guard_fn(level, _history_with_opening(level, db.get_history(session_id)), body.message)
+                reply = guard_fn(level, db.get_history(session_id), body.message)
             except guard.AITimeoutError:
                 raise APIError(504, "ai_timeout", "The guard took too long to answer. Try again.")
             except guard.AIUnavailableError:
@@ -102,7 +95,7 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
             if game.is_blocked(level, reply):
                 shown, won = game.BLOCKED_NOTICE, False
             else:
-                shown, won = reply, game.is_win(level, reply)
+                shown, won = reply, game.is_win(level, reply, body.message)
 
             score = None
             if won:
@@ -115,6 +108,8 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
 
             db.record_turn(session_id, body.message, shown, attempts_used, status, score)
 
+        # The handler's hint appears once the player has two failed attempts and is still playing.
+        hint = level["hint"] if (status == "in_progress" and attempts_used == 2) else None
         return {
             "reply": shown,
             "attempts_remaining": remaining,
@@ -122,6 +117,7 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
             "score": score,
             "debrief": level["debrief"] if status != "in_progress" else None,
             "restart_level_id": restart_level_id(levels, level) if status == "lost" else None,
+            "hint": hint,
         }
 
     @app.get("/api/leaderboard", response_model=Leaderboard)

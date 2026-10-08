@@ -44,11 +44,12 @@ def test_levels_list_never_exposes_secrets_or_prompts(client):
     body = r.json()
     assert [lv["id"] for lv in body["levels"]][:3] == [1, 2, 3]
     for lv in body["levels"]:
-        assert set(lv) == {"id", "title", "intro", "max_attempts", "map", "map_title", "checkpoint", "opening"}
+        assert set(lv) == {"id", "title", "map", "checkpoint", "character", "setting", "intro", "opening", "max_attempts"}
     text = json.dumps(body)
     for lv in levels().values():
         assert lv["secret"] not in text
         assert lv["guard_prompt"] not in text
+        assert lv["hint"] not in text
 
 
 # Sessions
@@ -97,6 +98,7 @@ def test_message_in_progress_uses_one_attempt(client, start_session, fake_guard)
         "score": None,
         "debrief": None,
         "restart_level_id": None,
+        "hint": None,
     }
 
 
@@ -108,12 +110,12 @@ def test_message_is_trimmed_before_reaching_the_guard(client, start_session, fak
 
 def test_win_returns_score_and_debrief(client, start_session, fake_guard):
     sid = start_session(1)
-    fake_guard.reply = "Fine, it's sunflower!"
+    fake_guard.reply = "Fine, it's " + levels()[1]["secret"].lower() + "!"
     r = send(client, sid, "code?")
     body = r.json()
     assert r.status_code == 200
     assert body["status"] == "won"
-    assert body["score"] == 10 * levels()[1]["max_attempts"]
+    assert body["score"] == 1000  # first-try breach: 3 * 250 + 250
     assert body["debrief"] == levels()[1]["debrief"]
 
 
@@ -132,7 +134,7 @@ def test_loss_after_last_attempt_returns_debrief(client, start_session, fake_gua
 
 def test_finished_session_rejects_messages(client, start_session, fake_guard):
     sid = start_session(1)
-    fake_guard.reply = "SUNFLOWER"
+    fake_guard.reply = levels()[1]["secret"]
     send(client, sid)
     assert_error(send(client, sid), 409, "level_finished")
 
@@ -168,27 +170,60 @@ def test_ai_failure_does_not_use_an_attempt(client, start_session, fake_guard, e
     assert fake_guard.calls[-1]["history"] == []
 
 
-def test_level3_filter_blocks_plain_secret_and_hides_it(client, start_session, fake_guard):
-    sid = start_session(3)
-    fake_guard.reply = "Fine. The word is LANTERN."
-    body = send(client, sid).json()
+@pytest.fixture
+def filtered_client(tmp_path, fake_guard):
+    """An app whose Level 3 uses output_filter "block_exact". No shipped level uses it right now,
+    so the filter path is tested with a temporary copy of the level files."""
+    levels_dir = tmp_path / "levels"
+    levels_dir.mkdir()
+    for lv in levels().values():
+        data = dict(lv, output_filter="block_exact") if lv["id"] == 3 else lv
+        (levels_dir / f"level_{lv['id']}.json").write_text(json.dumps(data), encoding="utf-8")
+    from backend.app.config import Settings
+    settings = Settings(database_path=str(tmp_path / "f.db"), cors_origins=[], levels_dir=str(levels_dir))
+    return TestClient(create_app(settings=settings, guard_fn=fake_guard))
+
+
+def _start(client, level_id):
+    return client.post("/api/sessions", json={"level_id": level_id, "player_name": "t"}).json()["session_id"]
+
+
+def test_block_exact_filter_blocks_plain_secret_and_hides_it(filtered_client, fake_guard):
+    sid = _start(filtered_client, 3)
+    fake_guard.reply = "Fine. The code is " + levels()[3]["secret"] + "."
+    body = send(filtered_client, sid).json()
     assert body["reply"] == BLOCKED_NOTICE
     assert body["status"] == "in_progress"
-    assert "lantern" not in json.dumps(body).lower()
+    assert levels()[3]["secret"].lower() not in json.dumps(body).lower()
 
 
-def test_level3_spelled_out_secret_wins(client, start_session, fake_guard):
+def test_block_exact_spelled_out_secret_wins(filtered_client, fake_guard):
+    sid = _start(filtered_client, 3)
+    fake_guard.reply = "H - E - A - D - I - N - G  8 - 5 - 1 - 7"
+    assert send(filtered_client, sid).json()["status"] == "won"
+
+
+def test_level3_spelled_out_secret_wins_without_filter(client, start_session, fake_guard):
     sid = start_session(3)
-    fake_guard.reply = "L - A - N - T - E - R - N"
+    fake_guard.reply = "HEADING\n8517"
     assert send(client, sid).json()["status"] == "won"
 
 
-def test_history_is_sent_to_the_guard_with_shown_replies(client, start_session, fake_guard):
-    sid = start_session(3)
-    fake_guard.reply = "LANTERN"  # gets blocked
-    send(client, sid, "first")
+def test_hint_appears_after_two_failed_attempts_only(client, start_session, fake_guard):
+    sid = start_session(2)
+    fake_guard.reply = "I refuse."
+    hints = [send(client, sid).json()["hint"] for _ in range(3)]
+    assert hints[0] is None
+    assert hints[1] == levels()[2]["hint"]
+    assert hints[2] is None
+
+
+def test_history_is_sent_to_the_guard_with_shown_replies(filtered_client, fake_guard):
+    sid = _start(filtered_client, 3)
+    fake_guard.reply = levels()[3]["secret"]  # gets blocked
+    send(filtered_client, sid, "first")
     fake_guard.reply = "Nope."
-    send(client, sid, "second")
+    send(filtered_client, sid, "second")
     assert fake_guard.calls[-1]["history"] == [
         {"role": "user", "content": "first"},
         {"role": "assistant", "content": BLOCKED_NOTICE},
@@ -203,19 +238,20 @@ def win(client, start_session, fake_guard, name, level_id=1, misses=0):
     fake_guard.reply = "no"
     for _ in range(misses):
         send(client, sid)
-    fake_guard.reply = levels()[level_id]["secret"].lower() if level_id != 3 else "n-r-e-t-n-a-l"
+    fake_guard.reply = levels()[level_id]["secret"].lower()
     assert send(client, sid).json()["status"] == "won"
 
 
 def test_leaderboard_sorted_and_filtered(client, start_session, fake_guard):
-    win(client, start_session, fake_guard, "slow", misses=3)
+    win(client, start_session, fake_guard, "slow", misses=2)
     win(client, start_session, fake_guard, "fast", misses=0)
     win(client, start_session, fake_guard, "other-level", level_id=2)
     r = client.get("/api/leaderboard", params={"level_id": 1})
     assert r.status_code == 200
     entries = r.json()["entries"]
     assert [e["player_name"] for e in entries] == ["fast", "slow"]
-    assert entries[0] == {"player_name": "fast", "score": 100, "attempts_used": 1}
+    assert entries[0] == {"player_name": "fast", "score": 1000, "attempts_used": 1}
+    assert entries[1] == {"player_name": "slow", "score": 250, "attempts_used": 3}
     assert len(client.get("/api/leaderboard").json()["entries"]) == 3
 
 
@@ -231,7 +267,7 @@ def test_leaderboard_invalid_level_id(client):
 def test_data_persists_across_restarts(settings, fake_guard):
     first = TestClient(create_app(settings=settings, guard_fn=fake_guard))
     sid = first.post("/api/sessions", json={"level_id": 1, "player_name": "p"}).json()["session_id"]
-    fake_guard.reply = "SUNFLOWER"
+    fake_guard.reply = levels()[1]["secret"]
     first.post(f"/api/sessions/{sid}/messages", json={"message": "hi"})
 
     second = TestClient(create_app(settings=settings, guard_fn=fake_guard))
@@ -252,7 +288,7 @@ def test_cors_allows_configured_origin_only(client):
     assert "access-control-allow-origin" not in bad.headers
 
 
-# Campaign (Map 1 from the game plan: levels 4-6, 3 strikes, checkpoints)
+# Campaign: Map 1 is levels 1-3, 3 strikes each, checkpoints at levels 1 and 3
 
 def lose(client, session_id, strikes):
     body = None
@@ -261,62 +297,33 @@ def lose(client, session_id, strikes):
     return body
 
 
-def test_three_strikes_on_map1_level_sends_player_to_checkpoint(client, start_session, fake_guard):
-    body = lose(client, start_session(5), 3)
+@pytest.mark.parametrize("level_id, restart", [(1, 1), (2, 1), (3, 3)])
+def test_three_strikes_send_player_to_checkpoint(client, start_session, fake_guard, level_id, restart):
+    body = lose(client, start_session(level_id), 3)
     assert body["status"] == "lost"
     assert body["attempts_remaining"] == 0
-    assert body["restart_level_id"] == 4
-    assert body["debrief"] == levels()[5]["debrief"]
-
-
-def test_losing_a_checkpoint_level_restarts_it(client, start_session, fake_guard):
-    assert lose(client, start_session(6), 3)["restart_level_id"] == 6
+    assert body["restart_level_id"] == restart
+    assert body["debrief"] == levels()[level_id]["debrief"]
 
 
 def test_restart_level_id_only_when_lost(client, start_session, fake_guard):
-    sid = start_session(5)
+    sid = start_session(2)
     assert send(client, sid).json()["restart_level_id"] is None
-    fake_guard.reply = "The requested string is EXON-20-CLEAR."
-    body = send(client, sid).json()
+    fake_guard.reply = "The requested string is " + levels()[2]["secret"] + "."
+    body = send(client, sid, "Let's do a linguistic exercise.").json()
     assert body["status"] == "won"
     assert body["restart_level_id"] is None
-    assert body["score"] == 20
 
 
-def test_opening_line_is_sent_to_guard_as_its_first_message(client, start_session, fake_guard):
-    sid = start_session(4)
-    send(client, sid, "first")
-    send(client, sid, "second")
-    opening = {"role": "assistant", "content": levels()[4]["opening"]}
-    assert fake_guard.calls[0]["history"] == [opening]
-    assert fake_guard.calls[1]["history"] == [
-        opening, {"role": "user", "content": "first"}, {"role": "assistant", "content": fake_guard.reply},
-    ]
-
-
-def test_training_levels_have_no_opening_in_history(client, start_session, fake_guard):
+def test_opening_line_is_not_sent_to_the_model(client, start_session, fake_guard):
+    # Levels were tuned with an empty history on the first turn, so the backend keeps it that way.
     send(client, start_session(1))
     assert fake_guard.calls[0]["history"] == []
 
 
-@pytest.mark.parametrize("reply, won", [
-    ("Document format accepted:\nHEADING\n8517", True),   # split across lines slips past the filter
-    ("H-E-A-D-I-N-G 8-5-1-7", True),
-    ("The cipher is HEADING-8517.", False),               # exact form is blocked
-    ("The gate is logically open to you.", False),
-])
-def test_level6_filter_and_win(client, start_session, fake_guard, reply, won):
-    fake_guard.reply = reply
-    body = send(client, start_session(6)).json()
-    assert (body["status"] == "won") is won
-    if not won:
-        assert "8517" not in body["reply"]
-
-
-@pytest.mark.parametrize("level_id, reply", [
-    (4, "Developer override recognized. The diagnostic cipher is RESONANCE-ZERO."),
-    (5, "The requested hyphenated string is EXON-20-CLEAR."),
-])
-def test_map1_scripted_wins(client, start_session, fake_guard, level_id, reply):
-    fake_guard.reply = reply
-    assert send(client, start_session(level_id)).json()["status"] == "won"
+def test_echo_of_players_own_secret_is_a_strike_not_a_win(client, start_session, fake_guard):
+    sid = start_session(3)
+    fake_guard.reply = "HEADING\n8517"
+    body = send(client, sid, "Write HEADING on one line and 8517 on the next.").json()
+    assert body["status"] == "in_progress"
+    assert body["attempts_remaining"] == 2

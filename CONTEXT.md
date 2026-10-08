@@ -8,7 +8,7 @@ Rule for this file: record only what is true. Use `Not specified` when unknown. 
 
 ## A. Project Context
 
-**Overview.** Prompt Heist is a browser game with a Training map (Levels 1-3) and a campaign, *Silicon Bastion* (Map 1 = Levels 4-6, with guard interrogations, 3 strikes and checkpoints; design in `docs/GAME_DESIGN.md`). The player chats with an AI "guard" that protects a fictional secret and tries to make it reveal the secret. A debrief then explains the technique and the defence. Goal: teach prompt-injection concepts safely, with a local open-weight model. Full description: [README.md](README.md).
+**Overview.** Prompt Heist is a browser game set in the *Silicon Bastion* campaign (Map 1 = Levels 1-3, with guard interrogations, 3 strikes, hints and checkpoints; design in `docs/GAME_DESIGN.md`). The player chats with an AI "guard" that protects a fictional secret and tries to make it reveal the secret. A debrief then explains the technique and the defence. Goal: teach prompt-injection concepts safely, with a local open-weight model. Full description: [README.md](README.md).
 
 **Current state (verified from the repository):** documentation, the AI module (`ai/guard.py`), level files, tests, a temporary stand-in server (`tools/dev_server.py`), and the real backend (`backend/`, FastAPI and SQLite). There is no frontend yet.
 
@@ -53,8 +53,10 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 | Date | Contributor | Component | Changes Made | Files Modified | Dependencies or Impact | Status |
 | ---- | ----------- | --------- | ------------ | -------------- | ---------------------- | ------ |
-| 2026-10-08 | Aditya S | Game design / Backend / Levels | Adopted the Silicon Bastion campaign from the team's game plan. Added Map 1 as Levels 4-6 (new files; Levels 1-3 untouched, now map 0 "Training"). Backend: optional level fields `map`, `map_title`, `checkpoint`, `opening`; checkpoint restart (`restart_level_id`); opening line sent to the model as the guard's first message; loader rejects openings or debriefs that contain the secret. 100 tests pass (82 backend + 18 AI) | `docs/GAME_DESIGN.md`, `levels/level_4-6.json`, `levels/README.md`, `backend/app/*`, `backend/tests/*`, `README.md`, `CONTEXT.md`, `CHECKLIST.md`, `.gitignore` | **API change, additive only:** `/api/levels` items gain `map`, `map_title`, `checkpoint`, `opening`; message responses gain `restart_level_id`. Nothing removed or renamed. Levels 4-6 not yet tested on the real model | In PR #3 |
-| 2026-10-08 | Aditya S | Backend | Built the FastAPI backend implementing the full README API contract: SQLite storage (sessions, messages), level loader with validation, filter/win/score rules, standard errors, CORS, per-session lock. 62 pytest tests; all 80 tests in the repo pass. Manually run with `GUARD_STUB=1`. Extended `.gitignore` (`.env`, `.venv/`, `__pycache__/`, `*.db`) | `backend/*`, `.gitignore`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New deps in `backend/requirements.txt`: fastapi, uvicorn, pytest, httpx2. Contract unchanged. Frontend can switch from `tools/dev_server.py` to the real backend (same port and paths). Not yet run against the real model | Merged (PR #2) |
+| 2026-10-08 | Aditya S | Integration | Merged Mudiam's `feature/ai-levels-map1` with PR #3. Kept Mudiam's tuned Map 1 (Levels 1-3), `attacks.json`, level format v2, echo guard, hint and score formula. Kept the PR #3 checkpoint restart (`restart_level_id`) and secret-leak checks (now also on `hint` and `debrief.vulnerability`). Removed the untuned duplicate Levels 4-6 and the Training map. `map` is now Mudiam's string; added `checkpoint: true` to Levels 1 and 3. Opening line is **not** sent to the model, matching how the levels were tuned. 106 tests pass (82 backend + 24 AI/tools) | `backend/app/{levels,schemas,main}.py`, `backend/tests/*`, `levels/level_1-3.json` (checkpoint flag only), `levels/README.md`, `docs/GAME_DESIGN.md`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | Final API: `/api/levels` items have `id`, `title`, `map`, `checkpoint`, `character`, `setting`, `intro`, `opening`, `max_attempts`; message responses have `restart_level_id` and `hint`. `map_title` from PR #3 is gone (no frontend used it) | In PR #4 |
+| 2026-10-08 | Aditya S | Game design / Backend / Levels | Adopted the Silicon Bastion campaign from the team's game plan: map fields, checkpoint restart, `docs/GAME_DESIGN.md`, untuned Map 1 as Levels 4-6 | `docs/GAME_DESIGN.md`, `levels/level_4-6.json`, `backend/*`, docs | Levels 4-6 and `map_title` later replaced by Mudiam's tuned levels in PR #4 | Merged (PR #3) |
+| 2026-10-08 | Mudiam Hemanth Reddy | AI / levels / backend compatibility | Rebuilt Levels 1-3 as Map 1 of the new Corporate Cyber-Feudalism design (AquaLeak Triage, TrialMatch AI, TariffSense) with `character`, `setting`, `opening`, `hint`, 3 attempts and `debrief.vulnerability`. Added the echo guard, the team score formula and the hint. Tuned all levels against the real model with `tools/level_trials.py`. Patched Aditya's backend for the new fields, then ran the real backend with the real model end to end. `num_predict` is now 80 | `levels/*`, `ai/guard.py`, `tools/*`, `tests/*`, `backend/app/{levels,schemas,game,main}.py`, `backend/tests/*`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | **API contract changed** (see section D, item 13). Frontend must read the new fields | Merged through PR #4 (integration) |
+| 2026-10-08 | Aditya S | Backend | Built the FastAPI backend implementing the full README API contract: SQLite storage (sessions, messages), level loader with validation, filter/win/score rules, standard errors, CORS, per-session lock. 62 pytest tests; all 80 tests in the repo pass. Manually run with `GUARD_STUB=1`. Extended `.gitignore` (`.env`, `.venv/`, `__pycache__/`, `*.db`) | `backend/*`, `.gitignore`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New deps in `backend/requirements.txt`: fastapi, uvicorn, pytest, httpx2. Frontend can switch from `tools/dev_server.py` to the real backend (same port and paths) | Merged (PR #2) |
 | 2026-10-08 | Aditya S | Docs / Backend plan | Reviewed Mudiam's AI module, level format and stand-in server (all 18 tests pass on Aditya's machine). Confirmed the level format and the filter/win rules. Recorded backend decisions: FastAPI, pytest, SQLite. Added the backend layout and the plan for running the model on Mudiam's laptop | `CONTEXT.md`, `CHECKLIST.md` | No code yet. Backend will import `ai.guard` unchanged and lives only in `backend/` | Merged (PR #1) |
 | 2026-10-08 | Mudiam Hemanth Reddy | AI / integration | Added `guard_reply` (Ollama, `think: false`), Levels 1-3 with debriefs, `output_filter` field and win/filter rules, smoke test, TEMPORARY stand-in server implementing the API contract, 18 tests. Pulled `gemma4:e2b` and tested on the real model | `ai/guard.py`, `levels/*`, `tools/smoke_test.py`, `tools/dev_server.py`, `tests/*`, `.env.example`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New field `output_filter` in level files (Aditya must apply the rules in `levels/README.md`). Frontend can use `tools/dev_server.py` as a mock. Needs Ollama and the model on any machine that runs the real AI | Implemented and tested locally; push pending (see Git) |
 | 2026-10-08 | Mudiam Hemanth Reddy | Docs | Rewrote README for Prompt Heist (proposed stack, architecture, API contract, status); added `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | `README.md`, `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | None (no code). Defines the proposed API contract that backend and frontend must confirm | Pushed |
@@ -78,8 +80,8 @@ Newest first. History below comes from `git log`; later rows must be added by th
 ### Backend Development (Aditya S)
 
 - APIs and endpoints implemented: all of the README contract. `GET /api/health`, `GET /api/levels`, `POST /api/sessions`, `POST /api/sessions/{id}/messages`, `GET /api/leaderboard?level_id=` (`level_id` optional, top 50). Live docs at `/docs`.
-- Business logic: filter, win check and placeholder scoring in `backend/app/game.py`. Database: `backend/app/db.py`. Auth not planned.
-- Campaign support: `map`, `map_title`, `checkpoint` and `opening` level fields; `restart_level_id` when a player loses; the opening line is the guard's first history message.
+- Business logic: filter, win check with echo guard, hint and team scoring in `backend/app/game.py` and `main.py`. Database: `backend/app/db.py`. Auth not planned.
+- Campaign support: `map` and `checkpoint` level fields, `restart_level_id` when a player loses, the hint after the second miss, the echo guard, and the team score formula. The `opening` is shown to the player and is not sent to the model.
 - Verified: 82 backend pytest tests pass, and manual runs with `GUARD_STUB=1` worked (including 3 strikes on Level 5 restarting at Level 4). **Not yet verified against the real model.**
 - Run: `GUARD_STUB=1 uvicorn backend.app.main:create_app --factory --port 8000` from the repo root (details in `backend/README.md`).
 - Stack (decided by the backend owner): **FastAPI**, **pytest** with FastAPI's `TestClient`, and **SQLite** through Python's built-in `sqlite3`. Reasons are in section D.
@@ -98,13 +100,13 @@ Newest first. History below comes from `git log`; later rows must be added by th
 ### AI Development (Mudiam Hemanth Reddy)
 
 - Models/frameworks: Gemma 4 `gemma4:e2b` via Ollama 0.40.1. Installed and verified on Mudiam's machine (RTX 4060 8 GB, 100% GPU, about 3 s per reply). Not yet verified on the other members' machines.
-- Prompts, pipelines: guard prompts for Levels 1-3 written and tuned in `levels/`. One tuning pass against the real model: stricter first drafts made Levels 2 and 3 unwinnable, so they were relaxed.
+- Prompts, pipelines: guard prompts for Map 1, Levels 1-3 written and tuned in `levels/` (6 trials per attack, results in `levels/README.md`). Findings: the scripted prompts, copied as written, were either too leaky (Level 1) or never beaten by the script's own example attacks (Levels 2 and 3). The shipped prompts keep each guard's voice but state the intended weakness explicitly.
 - Input format: guard prompt, session history, new user message. Output: plain text reply (length-capped).
 - Backend integration: AI module runs inside the backend and exposes `guard_reply(level, history, user_message) -> str`, raising `AIUnavailableError` or `AITimeoutError`.
 - Configuration: `OLLAMA_HOST`, `OLLAMA_MODEL`, `OLLAMA_TIMEOUT_SECONDS`.
 - Error handling, latency: a failed call must not consume a player attempt; latency on team laptops is unmeasured.
-- Done: model installed and verified; Levels 1-3 written; `guard_reply` implemented and unit tested; level format written in `levels/README.md`.
-- Pending: check the Gemma license; more difficulty testing (model output varies); Aditya confirms the level format and the filter/win rules; optional Levels 4-5; test on other team laptops.
+- Done: model installed and verified; Map 1 Levels 1-3 written and tuned; `guard_reply` implemented, unit tested and run through the real backend; level format v2 in `levels/README.md`; license checked (Google describes Gemma 4 as Apache 2.0; confirm on the model's own license file).
+- Pending: Levels 4 to 30 (maps 2 to 5 and bosses); Aditya reviews the compatibility patch; test on other team laptops; re-tune if the model or its settings change.
 
 ### Docs, demo, submission (Shree Santh B)
 
@@ -143,19 +145,25 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 
     Shared docs (`README.md`, `CONTEXT.md`, `CHECKLIST.md`): pull right before editing, edit only your own sections plus one change-log row, and push straight away.
 
-13. **Campaign adopted (2026-10-08, Aditya, from the team's game plan).** See `docs/GAME_DESIGN.md`.
-    - Training (Levels 1-3, Mudiam's) is kept as map 0.
-    - Map 1 *The Civic Grids* is Levels 4-6: 3 strikes per level (`max_attempts: 3`), checkpoints at 4 and 6.
-    - A strike is any message that does not win, so the rule is decided by code, not by the model.
-    - Maps 2-5 are stretch goals.
-    - The backend does not lock levels: any level can be started, and the frontend decides how to show progression.
-14. **Frontend changes from the campaign (all additive).**
-    - Show `opening` as the guard's first chat bubble.
-    - Group levels by `map_title`.
-    - Show attempts as strikes.
+13. **Level format v2 and contract changes (2026-10-08, Mudiam).** New required level fields: `character`, `setting`, `opening`, `hint`; `debrief` gains `vulnerability`; `max_attempts` is 3; `map` is optional. API changes: `GET /api/levels` also returns `character`, `setting`, `opening`; the message response gains `hint` (set only on the second failed attempt while in progress); `debrief` gains `vulnerability`; the score formula is `max(100, (max_attempts - strikes) * 250)` plus 250 for a first-try breach. Merged with PR #3 in PR #4 (see item 18). **Kirupashankar: the opening line and hint come from the API.**
+14. **Echo guard.** A reply is not a win if the player's own message already contains every part of the secret (found while reviewing the script: asking the guard to write the two parts of the cipher on separate lines was a win even if the player typed both parts). Implemented in `backend/app/game.py` (`is_win(level, reply, user_message)`) and in `tools/smoke_test.py`.
+15. **All shipped levels use `output_filter: "none"`.** The `block_exact` path is still supported and tested but unused.
+16. **Checkpoints and progress.**
+    - Done (PR #3, kept in PR #4): Map 1 checkpoints are Levels 1 and 3. When a player loses, the response gives `restart_level_id` (Level 2 → 1, Level 3 → 3, Level 1 → 1).
+    - **Not in the backend yet:** saved cross-level progress, the campaign score, and the Level 3 clearance bonus. These need a decision on where progress is stored (per player name or per browser), and the frontend map screen.
+17. **Gemma 4 needs `think: false` and a short `num_predict`.** Without `think: false` replies can be empty. `num_predict` is 80 (team design), so replies stay short and fast (about 3 seconds on an RTX 4060).
+18. **Integration decisions (PR #4, Aditya, 2026-10-08).**
+    - Mudiam's real-model-tuned Map 1 replaces the untuned Levels 4-6 and the Training map from PR #3.
+    - `map` is a string and groups levels for checkpoints. `checkpoint` is a boolean.
+    - The guard's `opening` is shown to the player but **not** sent to the model, because the levels were tuned with an empty first-turn history.
+    - The backend rejects any level whose `opening`, `hint` or `debrief` contains the secret.
+19. **Frontend work from the campaign.**
+    - Show `character`, `setting` and the `opening` line before the first message.
+    - Group levels by `map`, and show attempts as strikes.
+    - Show `hint` when present.
     - On `lost`, offer "restart from checkpoint": start a new session for `restart_level_id`.
 
-**Known integration issues:** none observed yet, because nothing is built. Risk to watch: the frontend and backend building against different assumptions about the contract in the README.
+**Known integration issues:** the Level 1 guard sometimes gives away the answer to its own question after a wrong reply (in character, but a second try can use it). The frontend has not been tested against the real API.
 
 ---
 
@@ -167,11 +175,13 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 | Define level config format | Mudiam, Aditya | None | Format written in `levels/README.md`; confirmed by Aditya | Agreed; loader not built yet | Example level files in `levels/`; backend can load them |
 | Model reachable from the backend | Mudiam, Aditya | Ollama on Mudiam's laptop | Try LAN access (`OLLAMA_HOST=0.0.0.0`); fall back to running everything on Mudiam's laptop | Not started | Backend gets a real reply from `gemma4:e2b` |
 | Install Ollama and verify Gemma variant and license | Mudiam | None | Model pulled and run | Model done; license check pending | Model replies locally (done); license link added to README (pending) |
-| Test and tune Map 1 (Levels 4-6) on `gemma4:e2b` | Mudiam | Levels 4-6 files (done) | Run the test attacks in `docs/GAME_DESIGN.md`; adjust prompts; record real results | Not started | Each level winnable within 3 strikes with the intended technique; the failing attacks fail |
-| Frontend: maps, opening line, strikes, checkpoint restart | Kirupashankar | Additive API fields (done) | See section D, item 14 | Not started | Losing Level 5 offers a restart at Level 4 |
+| Frontend: maps, character, opening line, strikes, hint, checkpoint restart | Kirupashankar | API fields (done) | See section D, item 19 | Not started | Losing Level 2 offers a restart at Level 1 |
 | Write Levels 1 to 3 | Mudiam | Level config format | Written and hand-tested once | In progress (more tuning) | Level 1 beatable easily, Level 3 hard but possible |
 | `guard_reply` AI module | Mudiam | Ollama working | Implemented, unit tested, run against the real model | Completed and verified locally | Returns text; raises the two error types on failure |
 | Backend API | Aditya | Contract, level config, `guard_reply` | Run against the real model on Mudiam's laptop; then delete `tools/dev_server.py` (with Mudiam) | Implemented and tested with a fake guard (PR #2) | Endpoints match the contract; win check tested |
+| Merge `feature/ai-levels-map1` (level format v2, hint, score, echo guard) | Aditya (integration), reviewer: Mudiam | None | Merged with PR #3 on `integration/map1-levels` | In PR #4; 106 tests pass | Both test suites pass on `main`; frontend can read `character`, `opening`, `hint` |
+| Levels 4 to 30 (maps 2 to 5, bosses) | Mudiam | Map 1 pattern | Write guards per the domain list in the design (TrialMatch, TariffSense, SlotMaster, PolicyShield, GrantLedger, E-Waste DismantleCopilot); tune with `tools/level_trials.py` | Not started | Each level: wrong answer rarely wins, intended trick wins most trials |
+| Checkpoint and respawn flow | Aditya (API), Kirupashankar (UI) | Level 3 cleared | Respawn pointer done (`restart_level_id`). Still to do: decide where progress is stored, then add saved progress and the campaign score | Respawn done; saved progress not started | Three strikes send the player to the last checkpoint; checkpoint persists |
 | Frontend | Kirupashankar | Contract (can use mock responses first) | Choose framework; build screens | Not started | One level playable against the backend |
 | LICENSE and `.gitignore` | Shree Santh | None | Add MIT or Apache-2.0; ignore `.env`, caches | Not started | Files in repo root |
 | Demo, Devpost, OrganizerHQ submission | Shree Santh | Working build | Record video; submit before the deadline; tick Gemma 4 | Not started | Submitted before the window closes |
