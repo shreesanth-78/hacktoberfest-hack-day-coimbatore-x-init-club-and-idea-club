@@ -101,6 +101,7 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Informal playtest feedback from 3 to 5 people recorded (not done: it needs real players; no feedback is invented)
 - [ ] Demo video recorded; link added (script, messages and launcher are ready: `docs/DEMO_SCRIPT.md`, `scripts/start_demo.ps1`)
 - [ ] Deployed on Render (prepared: `render.yaml`, `docs/DEPLOY.md`; needs the repository owner's Render account; the model cannot run on Render, see the guide)
+- [x] A temporary public link works through a no-account tunnel (`docs/DEPLOY.md`, option E; tested 2026-10-08). It is only up while the laptop and the tunnel run, so it is not a permanent deployment
 - [ ] Devpost project created; link added
 - [x] No secrets committed (`.env` and `*.db` are ignored; checked before each commit)
 - [ ] Submitted through OrganizerHQ before the deadline

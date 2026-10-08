@@ -1,6 +1,6 @@
 # Deploying Prompt Heist (Render)
 
-**Read this first.** The game has three parts: the web UI, the backend, and an AI model. The first two deploy to Render without trouble. **The model does not**: Gemma needs a GPU (or at least several GB of RAM and a lot of patience), and Render's plans have no GPU. So "deploying" means choosing where the model runs. The three real options are below. Option A is the one we have actually tested.
+**Read this first.** The game has three parts: the web UI, the backend, and an AI model. The first two deploy to Render without trouble. **The model does not**: Gemma needs a GPU (or at least several GB of RAM and a lot of patience), and Render's plans have no GPU. So "deploying" means choosing where the model runs. Options are below. **A and E are the ones we have actually tested; E gives a public link in two commands.**
 
 | Option | Where the model runs | Tested? | Use it for |
 | ------ | -------------------- | ------- | ---------- |
@@ -8,8 +8,27 @@
 | **B. Render + your laptop as the model server** | Your laptop, reached through a public tunnel | No (steps below) | A public link while your laptop is on |
 | **C. Render + a hosted Ollama** | Ollama's cloud (needs an Ollama account and key) | No | A link that works when your laptop is off |
 | **D. Render with canned replies** | No model (`GUARD_STUB=1`) | The stub mode and the serving layout, yes; Render itself, no | Showing the screens only. Not the real AI. |
+| **E. Temporary public link (tunnel, no account)** | Your GPU laptop, the whole game served from it | **Yes** (2026-10-08): the page, the API and a real guard reply worked from the internet | A public link for the demo or the judges while your laptop is on. **The fastest way to a working public link.** |
 
 Be honest on the Devpost page about which option the public link uses.
+
+## Option E: a temporary public link with no account (tested)
+This needs no Render account and no sign-up. It uses Cloudflare's free quick tunnel to publish the game that is already running on your laptop:
+
+```powershell
+winget install --id Cloudflare.cloudflared -e      # once
+# 1. start the game: powershell -ExecutionPolicy Bypass -File scripts/start_demo.ps1   (serves http://localhost:8000)
+# 2. in a second terminal:
+cloudflared tunnel --url http://localhost:8000
+```
+
+It prints an address like `https://<random-words>.trycloudflare.com`. Open it from any device. What was verified on 2026-10-08: the page, `/api/health`, `/api/health/ai`, the 30 levels, and a win against the real Gemma model, all over the internet.
+
+Things to know:
+- **It is only up while your laptop, the game and the tunnel are running.** Press Ctrl+C in the tunnel window to stop it. The address changes every time you restart the tunnel, so it is not suitable for the README.
+- **Anyone who has the address can use your GPU and play.** Do not post it publicly; share it only for the demo or with the judges, and stop the tunnel afterwards.
+- The first reply after the model has been idle takes about 15 seconds (it has to load again). Send one message yourself before showing it to someone.
+- Cloudflare describes quick tunnels as for testing and development, with no uptime guarantee.
 
 ## What gets deployed
 One Render **web service on the native Python runtime** (no Docker). `render.yaml` installs `backend/requirements.txt` and starts the FastAPI backend, which serves both the API and the already-built frontend (`frontend/dist`, committed to the repository, so Render does not need Node.js). Same address for the page and the API, so there is no CORS to set up. The model is **not** part of the service.

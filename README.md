@@ -560,7 +560,7 @@ Each member adds their own part. Everything below was built during the Hack Day;
 
 ## Working Application
 
-**Live Application:** none yet (the Render deployment is prepared but not created; see [docs/DEPLOY.md](docs/DEPLOY.md)). The whole game runs locally with `scripts/start_demo.ps1`, or as three parts (Ollama, backend, frontend) as described in "Running the Project" and `frontend/README.md`.
+**Live Application:** no permanent deployment yet (the Render files are prepared but not created; see [docs/DEPLOY.md](docs/DEPLOY.md)). A **temporary public link** can be created in two commands with a no-account tunnel (`docs/DEPLOY.md`, option E; tested on 2026-10-08, but the address changes each time and only works while the demo laptop is on). The whole game also runs locally with `scripts/start_demo.ps1`.
 
 What can be tested today, through the API at http://localhost:8000/docs: start a campaign, play any of the 30 levels, win or lose, see the debrief, checkpoints, respawn and the leaderboard. See "Running the Project".
 
