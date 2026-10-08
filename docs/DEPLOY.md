@@ -39,6 +39,7 @@ What this does and does not give you:
 | **D. Render with canned replies** | No model (`GUARD_STUB=1`) | The stub mode and the serving layout, yes; Render itself, no | Showing the screens only. Not the real AI. |
 | **E. Temporary public link (tunnel, no account)** | Your GPU laptop, the whole game served from it | **Yes** (2026-10-08): the page, the API and a real guard reply worked from the internet | A public link for the demo or the judges while your laptop is on. **The fastest way to a working public link.** |
 | **F. Always-on PREVIEW on GitHub Pages (no new account)** | **No model.** The screens run in the browser with the scripted mock guardians | The build, the subpath layout and a played level: yes. The Pages publish itself: no (needs the owner to switch Pages on) | A link that works when every laptop is off, to show the interface. **It is not the real AI** and must be labelled as a preview. |
+| **G. Hugging Face Space (real Gemma on CPU, free, no card)** | Gemma 4 `gemma4:e2b` inside the Space itself | **No**: files written, never built (Docker would not start here) | A permanent link that works with every laptop off and uses the real model. Slower replies. Steps: [DEPLOY_HUGGINGFACE.md](DEPLOY_HUGGINGFACE.md). |
 
 Be honest on the Devpost page about which option the public link uses.
 

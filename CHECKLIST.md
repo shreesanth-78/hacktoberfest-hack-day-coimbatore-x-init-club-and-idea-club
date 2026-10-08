@@ -103,6 +103,7 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Deployed on Render (prepared: `render.yaml`, `docs/DEPLOY.md`; needs the repository owner's Render account; the model cannot run on Render, see the guide)
 - [x] A temporary public link works through a no-account tunnel (`docs/DEPLOY.md`, option E; tested 2026-10-08). It is only up while the laptop and the tunnel run, so it is not a permanent deployment
 - [ ] Always-on PREVIEW on GitHub Pages (scripted mock guardians, not the real AI): workflow and build are ready and tested locally; it goes live when the repository owner switches Pages on (Settings, Pages, Source: GitHub Actions; see `docs/DEPLOY.md`, option F)
+- [ ] Permanent link with the real model on a Hugging Face Space (files ready in `deploy/huggingface/`, steps in `docs/DEPLOY_HUGGINGFACE.md`; never built; needs a Hugging Face account to create the Space)
 - [ ] Devpost project created; link added
 - [x] No secrets committed (`.env` and `*.db` are ignored; checked before each commit)
 - [ ] Submitted through OrganizerHQ before the deadline
