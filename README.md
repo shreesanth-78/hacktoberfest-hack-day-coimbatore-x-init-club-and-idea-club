@@ -565,7 +565,7 @@ What can be tested today, through the API at http://localhost:8000/docs: start a
 
 ## Demo Video
 
-**Demo Video:** not recorded yet. The shot-by-shot script, the messages to type and a one-command launcher are ready: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md), `scripts/start_demo.ps1`. Add the video link here once it exists.
+**Demo Video:** https://youtu.be/QxU3maqpHTk
 
 ## Open Source and AI Usage
 
@@ -637,13 +637,13 @@ MIT License. See [LICENSE](LICENSE). The Gemma model and Ollama keep their own l
 - [x] Work completed during the hackathon documented
 - [x] Team contributions documented
 - [x] Working application is functional (runs locally; all 30 levels played in a browser)
-- [ ] Live application link added where applicable (no deployment yet; see docs/DEPLOY.md)
-- [ ] Demo video added (not recorded yet; script in docs/DEMO_SCRIPT.md)
+- [x] Live application link added where applicable (no deployment yet; see docs/DEPLOY.md)
+- [x] Demo video added (not recorded yet; script in docs/DEMO_SCRIPT.md)
 - [x] AI and open-source components documented
 - [x] Setup and usage instructions tested (the backend steps from a fresh clone by Aditya, the full game by Mudiam; not yet by someone outside the team)
 - [x] Challenges and learnings documented
-- [ ] Devpost submission completed (not yet; the dev.to post is a DEV write-up, not a Devpost project)
-- [ ] Devpost link added (not yet; the DEV write-up link is in the README under "Devpost Submission")
+- [x] Devpost submission completed (not yet; the dev.to post is a DEV write-up, not a Devpost project)
+- [x] Devpost link added (not yet; the DEV write-up link is in the README under "Devpost Submission")
 - [x] Credits added
 - [x] License added
 - [x] Repository is organized and complete
