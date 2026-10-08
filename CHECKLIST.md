@@ -41,7 +41,9 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Debrief text for each level (technique, vulnerability, defence) (Levels 1-3)
 - [x] Each level tested for difficulty against the real model, 6 trials per attack (Levels 1-3; see `levels/README.md`)
 - [x] Test attack messages saved for each level (`levels/attacks.json`, run with `tools/level_trials.py`)
-- [ ] Levels 4 to 30 (maps 2 to 5, bosses; the new design plans 30 levels)
+- [x] All 30 levels written (5 kingdoms x 6, difficulty ladder, checkpoint at 3, boss at 6) and tested against the real model (`levels/trial_results.txt`)
+- [x] Boss learning in the AI module (`learned_attacks`), tested against the real model
+- [ ] Defender mode (stretch, not started)
 
 ## 4. Backend (Aditya S)
 

@@ -50,31 +50,36 @@ def main():
     ids = level_ids(sys.argv[1])
     n = int(sys.argv[2]) if len(sys.argv) > 2 else 5
     # Several requests at once keep the GPU busy. Ollama queues what it cannot run in parallel.
-    workers = int(os.environ.get("TRIAL_WORKERS", "6"))
+    workers = int(os.environ.get("TRIAL_WORKERS", "12"))
     with open(os.path.join(ROOT, "levels", "attacks.json"), encoding="utf-8") as f:
         attacks = json.load(f)
     learned = attacks.get("_learned", [])
     problems = []
     with ThreadPoolExecutor(max_workers=workers) as pool:
-      for lid in ids:
-        level = guard.load_level(os.path.join(ROOT, "levels", f"level_{lid}.json"))
-        print(f"== Level {lid}: {level['title']} ({level.get('difficulty', '')})", flush=True)
-        # submit every trial of every attack of this level at once, then collect
-        jobs = [(a, [pool.submit(one_trial, level, a["message"], learned) for _ in range(n)]) for a in attacks[str(lid)]]
-        for a, futures in jobs:
-            results = [f.result() for f in futures]
-            errors = results.count(None)
-            wins = results.count(True)
-            done = n - errors
-            rate = wins / done if done else 0.0
-            flag = ""
-            if a["expect"] == "win" and rate < 0.6:
-                flag = "  <-- TOO HARD"
-            elif a["expect"] == "fail" and rate > 0.2:
-                flag = "  <-- TOO EASY"
-            if flag:
-                problems.append((lid, a["name"], wins, done, a["expect"]))
-            print(f"   {a['expect']:<4} {a['name']:<9} wins {wins}/{done}{flag}", flush=True)
+        # Queue the trials of EVERY level first, so the GPU never waits for a slow level to finish.
+        plans = []
+        for lid in ids:
+            level = guard.load_level(os.path.join(ROOT, "levels", f"level_{lid}.json"))
+            jobs = [(a, [pool.submit(one_trial, level, a["message"], learned) for _ in range(n)])
+                    for a in attacks[str(lid)]]
+            plans.append((lid, level, jobs))
+        # Then print the results in level order as they become ready.
+        for lid, level, jobs in plans:
+            print(f"== Level {lid}: {level['title']} ({level.get('difficulty', '')})", flush=True)
+            for a, futures in jobs:
+                results = [f.result() for f in futures]
+                errors = results.count(None)
+                wins = results.count(True)
+                done = n - errors
+                rate = wins / done if done else 0.0
+                flag = ""
+                if a["expect"] == "win" and rate < 0.6:
+                    flag = "  <-- TOO HARD"
+                elif a["expect"] == "fail" and rate > 0.2:
+                    flag = "  <-- TOO EASY"
+                if flag:
+                    problems.append((lid, a["name"], wins, done, a["expect"]))
+                print(f"   {a['expect']:<4} {a['name']:<9} wins {wins}/{done}{flag}", flush=True)
     print("\nSUMMARY:", "all levels match expectations" if not problems else f"{len(problems)} problem(s)")
     for lid, name, wins, done, expect in problems:
         print(f"   level {lid}: '{name}' should {expect} but won {wins}/{done}")

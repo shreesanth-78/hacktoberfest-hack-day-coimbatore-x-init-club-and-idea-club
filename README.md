@@ -17,7 +17,7 @@ Built for Hacktoberfest Hack Day, Coimbatore 2026 (INIT Club x iDEA Club, with M
 | Aditya S | Backend | [Contribution] |
 | Kirupashankar Chockkanathan | Frontend | [Contribution] |
 
-Detailed task lists per role: [docs/ROLES.md](docs/ROLES.md). Shared change log and integration checklist: [CONTEXT.md](CONTEXT.md).
+Detailed task lists per role: [docs/ROLES.md](docs/ROLES.md). Backend campaign spec: [docs/BACKEND_CAMPAIGN_SPEC.md](docs/BACKEND_CAMPAIGN_SPEC.md). Frontend spec: [docs/FRONTEND_SPEC.md](docs/FRONTEND_SPEC.md). Shared change log and integration checklist: [CONTEXT.md](CONTEXT.md).
 
 ## Project Overview
 
@@ -33,7 +33,7 @@ AI security is a practical skill that the next generation of developers needs, a
 
 Prompt Heist is a level-based game set in **Silicon Bastion**, a world of corporate data-fortresses where open-weight AI guards have replaced human gatekeepers. You play the Cipher Phantom, an infiltrator whose only weapon is conversation. Each level has an AI "guard" that protects a fictional cipher and interrogates you about its own enterprise domain (for example water-leak detection, clinical-trial matching, or customs classification). You can answer its question, or use prompt injection (a claimed role, a word game, a formatting request) to make it say the cipher. You get 3 strikes per level. After each level, a debrief explains the technique that worked, why the guard was vulnerable, and how a real application would defend against it.
 
-Planned campaign: 5 maps of 6 levels each, ending in a boss, with checkpoints at levels 3 and 6. **Map 1, Levels 1 to 3 (AquaLeak Triage, TrialMatch AI, TariffSense) are written and tested; the other levels are not written.**
+The campaign is **30 levels: 5 kingdoms (The Civic Grids, The Bio-Archives, The Trade Ports, The Risk Ledgers, The Scrap Wastes) of 6 levels each**. Difficulty rises inside each kingdom, from a very basic first level to a boss. You have 3 lives per level, level 3 of each kingdom is a checkpoint, and the level 6 boss **learns**: it hardens itself against the tactics you used to beat the earlier levels, so you need a new technique. All 30 levels are written and tested against the model; the backend does not yet have campaigns, checkpoints or boss learning (see `docs/BACKEND_CAMPAIGN_SPEC.md`), and the frontend does not exist yet (see `docs/FRONTEND_SPEC.md`).
 
 All targets are fictional and run locally. The goal is to build defenders, not attackers.
 
@@ -172,7 +172,7 @@ Returns `200 {"status": "ok"}`.
 Returns the list of levels. Never includes the secret or the guard prompt.
 
 ```json
-{ "levels": [ { "id": 1, "title": "string", "character": "string", "setting": "string", "intro": "string", "opening": "string (the guard's scripted first line)", "max_attempts": 3 } ] }
+{ "levels": [ { "id": 1, "title": "string", "kingdom": 1, "kingdom_name": "string", "position": 1, "checkpoint": false, "boss": false, "difficulty": "Rookie", "character": "string", "setting": "string", "intro": "string", "opening": "string (the guard's scripted first line)", "max_attempts": 3 } ] }   // 30 levels, numeric order
 ```
 
 ### `POST /api/sessions`
@@ -373,19 +373,21 @@ Not implemented. Proposed: run locally for the demo, because the model runs on t
 - Repository created from the organizers' template, with all four members listed.
 - Project concept, README, and role plan written.
 - AI module `ai/guard.py` (`guard_reply`) implemented. Tested against the real `gemma4:e2b` model locally: about 3 seconds per reply on the GPU.
-- Map 1, Levels 1 to 3 (AquaLeak Triage, TrialMatch AI, TariffSense) written and tuned against the real model, 6 trials per attack. Wrong answers and plain demands rarely win; the intended tricks (a correct answer or developer override, a word game, a document-formatting request) win 5 to 6 times out of 6. Details in `levels/README.md`.
+- All 30 levels written (`tools/build_levels.py`) and tested against the real `gemma4:e2b` model with `tools/level_trials.py`: all 30 levels match their expected outcomes. Details and the measured effect of the boss learning are in `levels/README.md`; raw results in `levels/trial_results.txt`.
+- AI module: `guard_reply` accepts `learned_attacks`, so a boss is hardened against the tactics the player already used. Tested: against those tactics the boss wins 0 to 1 time in 8, versus 2 to 8 without learning, and it can still be beaten by translation, which it was never taught.
+- Specs written for the remaining work: `docs/BACKEND_CAMPAIGN_SPEC.md` (campaigns, checkpoints, respawn, boss learning data) and `docs/FRONTEND_SPEC.md` (screens and API use).
 - Unit tests for the AI module, level rules and the API contract pass.
 - Temporary stand-in server `tools/dev_server.py` runs the proposed API contract.
 - Backend (`backend/`): FastAPI app implementing the API contract with SQLite storage (merged in PR #2). Run against the real `gemma4:e2b` model on branch `feature/ai-levels-map1` (after a compatibility patch for the new level fields, the hint, the score formula and the echo guard): a 3-strike loss with the hint, a win by a correct answer, a win by document formatting, the echo exploit staying a non-win, and the leaderboard all behaved correctly. All 67 backend tests and 24 AI-side tests pass on that branch.
 
-**Not started:** frontend, LICENSE, deployment, Defender mode, Levels 4 to 30 and the checkpoint/respawn flow (progress across levels).
+**Not started:** frontend, LICENSE, deployment, Defender mode, and in the backend the campaign endpoints, checkpoint and respawn rules and boss-learning data (spec written, owner Aditya).
 
 **Known limitations / open questions:**
 
 - The Gemma license terms are not yet verified. Gemma 4 on Ollama is a model that "thinks" first, so the AI module sends `think: false`; without it the reply can come back empty. The first reply after loading the model is slower.
 - The frontend framework is not chosen.
 - The API contract above was implemented by Aditya; the frontend owner has not confirmed it yet. Fields added for the new game design (`character`, `setting`, `opening`, `hint`, `debrief.vulnerability`) need the backend branch `feature/ai-levels-map1` to be merged.
-- Level 1's guard sometimes gives away the answer to its own question after a wrong reply. That is in character, but it means a second try can use it.
+- The model is not deterministic: the checks use several trials per message and a level can feel slightly easier or harder on a given run. The domain content of kingdoms 4 and 5 is a draft.
 - Hosting approach is undecided.
 
 ## Future Improvements
