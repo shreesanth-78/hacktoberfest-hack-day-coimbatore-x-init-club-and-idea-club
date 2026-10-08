@@ -612,7 +612,7 @@ Each member adds their own.
 
 ## Devpost Submission
 
-**Devpost Project:** not created yet.
+**Devpost Project:** Subbitted.
 
 **DEV write-up:** [Prompt Heist: I Built an Ancient-Kingdom Game That Teaches AI Security](https://dev.to/shreesanth78/prompt-heist-i-built-an-ancient-kingdom-game-that-teaches-ai-security-kg5), by Shree Santh B, published on DEV on 2026-10-08. **It describes the earlier prototype** (a mock server with keyword rules, with Gemma and the backend still planned). It should be updated to say that the game now runs on the real Gemma model through the backend, with a learning boss and a leaderboard.
 
