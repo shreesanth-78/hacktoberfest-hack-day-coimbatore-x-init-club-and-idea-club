@@ -2,6 +2,28 @@
 
 **Read this first.** The game has three parts: the web UI, the backend, and an AI model. The first two deploy to Render without trouble. **The model does not**: Gemma needs a GPU (or at least several GB of RAM and a lot of patience), and Render's plans have no GPU. So "deploying" means choosing where the model runs. Options are below. **A and E are the ones we have actually tested; E gives a public link in two commands.**
 
+## Make it work with your laptop closed (about 10 minutes, two free accounts)
+
+A laptop that is shut cannot run the model, the game or a tunnel. To keep the game up without it, the game runs on Render and the model runs on Ollama's cloud. `render.yaml` already points at it (`OLLAMA_HOST=https://ollama.com`, `OLLAMA_MODEL=gemma4:31b`), so the only secret you type is your own API key. These steps need you to sign in; they cannot be done for you.
+
+1. **Ollama key.** Sign up or log in at https://ollama.com, then create an API key at https://ollama.com/settings/keys. Copy it. Treat it like a password.
+2. **Render account.** Sign up at https://render.com and connect your GitHub account. The repository belongs to `shreesanth-78`, so either Shree does steps 2 to 4 himself, or he gives Render access to the repository, or you fork it and deploy the fork (a fork needs the same files, which it gets automatically).
+3. **Blueprint.** In Render: **New, then Blueprint**, choose the repository and the `main` branch. Render reads `render.yaml`.
+4. **Paste the key.** When Render asks for `OLLAMA_API_KEY`, paste the key from step 1. Leave everything else as it is. Click **Apply**. The first build takes a few minutes.
+5. **Check it.** Open `https://<your-service>.onrender.com/api/health/ai`. It should say `"mode":"ollama"` and `"model":"gemma4:31b"`. If it says the model is not available, open https://ollama.com/api/tags and use the exact `gemma4` name listed there as `OLLAMA_MODEL` in Render (Environment tab).
+6. **Check the levels (important).** Every level was tuned on the small local model. The hosted model is much bigger, so a level may become easier or harder. On a computer with the repository, run the check against the hosted model:
+   ```bash
+   OLLAMA_HOST=https://ollama.com OLLAMA_API_KEY=<your key> OLLAMA_MODEL=gemma4:31b python tools/level_trials.py all 8
+   ```
+   (On PowerShell set the three variables with `$env:NAME="value"` first.) The last lines say which levels are too easy or too hard. A few borderline lines are normal, because the model varies. Many flags mean the prompts need retuning for this model, and the hosted game will feel different from the local one. Be honest about that on the Devpost page.
+7. **Warm it up.** Render's free plan sleeps after about 15 minutes without visitors, and the first request afterwards takes about a minute. Open the link a few minutes before anyone looks at it, and play one message.
+
+What this does and does not give you:
+- **Works with the laptop closed:** yes. Nothing runs on your laptop.
+- **Scores:** the free plan has no persistent disk, so the leaderboard is wiped on every deploy or restart.
+- **Not verified by us:** the Render build, the hosted model's behaviour, Ollama's free-plan limits (check https://ollama.com for the current limits; a busy demo could hit them) and whether the hosted `think: false` option is accepted. The local setup and the tunnel were verified; this route was not, because it needs the two accounts above.
+- **Plan B if the hosted model plays badly:** run the game locally for the demo (`scripts/start_demo.ps1`) and keep the hosted link only as a bonus.
+
 | Option | Where the model runs | Tested? | Use it for |
 | ------ | -------------------- | ------- | ---------- |
 | **A. Run it locally** | Your GPU laptop (`scripts/start_demo.ps1`) | **Yes**, the whole campaign and the browser play-through | The hackathon demo and the demo video. Most reliable. |
