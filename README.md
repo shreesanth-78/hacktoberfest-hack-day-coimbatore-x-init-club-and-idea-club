@@ -2,7 +2,8 @@
 
 > A browser game where you break into AI-guarded vaults by talking to them, then learn how to defend against the same tricks. Powered by a local open-weight model (Gemma 4).
 
-**Status: playable locally.** The frontend (React), the backend (FastAPI + SQLite) and the AI part (Gemma 4 through Ollama) are connected, and the game was played end to end in a browser on 2026-10-08 (a win, the hint, a defeat, the checkpoint and the respawn; details in [Current Development Status](#current-development-status) and [CONTEXT.md](CONTEXT.md)). Not done: a deployment, the demo video, and the stretch goal Defender mode.
+**Status: playable locally.** The frontend (React), the backend (FastAPI + SQLite) and the AI part (Gemma 4 through Ollama) are connected, and the game was played end to end in a browser on 2026-10-08 (a win, the hint, a defeat, the checkpoint and the respawn; details in [Current Development Status](#current-development-status) and [CONTEXT.md](CONTEXT.md)). Completed: a deployment, the demo video, and the stretch goal Defender mode.
+**Deployment Link** : https://entries-shell-generic-disciplines.trycloudflare.com/
 
 Built for Hacktoberfest Hack Day, Coimbatore 2026 (INIT Club x iDEA Club, with Major League Hacking).
 
