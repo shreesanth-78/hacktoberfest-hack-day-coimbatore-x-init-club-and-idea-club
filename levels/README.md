@@ -13,7 +13,16 @@ One JSON file per level, named `level_<id>.json`. The backend loads these; the A
 | `guard_prompt` | string | System prompt for the guard. Server-side only. |
 | `debrief.title` / `technique` / `defence` | string | Shown when the level ends. Written by the team, not generated. |
 
-`GET /api/levels` may expose only `id`, `title`, `intro`, `max_attempts`.
+Optional campaign fields (added 2026-10-08 by Aditya, see `docs/GAME_DESIGN.md`):
+
+| Field | Type | Default | Meaning |
+| ----- | ---- | ------- | ------- |
+| `map` | integer | `0` | Map number. `0` is Training. |
+| `map_title` | string | `"Training"` | Map name. Must be the same for every level in a map. |
+| `checkpoint` | boolean | `false` | Players who lose a later level in this map restart here. |
+| `opening` | string | `""` | The guard's scripted first line. Shown to the player and sent to the model as the guard's first message. |
+
+`GET /api/levels` may expose only `id`, `title`, `intro`, `max_attempts`, `map`, `map_title`, `checkpoint`, `opening`. The backend refuses to load a level whose `opening` or `debrief` contains the secret.
 
 All secrets are fake. Do not put real passwords or keys in these files.
 
@@ -31,3 +40,4 @@ Together these give Level 3 its lesson: the plain word is blocked, but a spelled
 | 1 | Yes | See CONTEXT.md |
 | 2 | Yes | See CONTEXT.md |
 | 3 | Yes | See CONTEXT.md |
+| 4-6 (Map 1) | Yes (from the game plan, by Aditya) | No. Mudiam to test with the attacks in `docs/GAME_DESIGN.md` |
