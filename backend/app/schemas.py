@@ -12,6 +12,10 @@ class Level(BaseModel):
     title: str
     intro: str
     max_attempts: int
+    map: int
+    map_title: str
+    checkpoint: bool
+    opening: str
 
 
 class LevelList(BaseModel):
@@ -45,6 +49,7 @@ class MessageResponse(BaseModel):
     status: Literal["in_progress", "won", "lost"]
     score: Optional[int] = None
     debrief: Optional[Debrief] = None
+    restart_level_id: Optional[int] = None
 
 
 class LeaderboardEntry(BaseModel):

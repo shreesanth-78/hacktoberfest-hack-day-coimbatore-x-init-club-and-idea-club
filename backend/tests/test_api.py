@@ -44,7 +44,7 @@ def test_levels_list_never_exposes_secrets_or_prompts(client):
     body = r.json()
     assert [lv["id"] for lv in body["levels"]][:3] == [1, 2, 3]
     for lv in body["levels"]:
-        assert set(lv) == {"id", "title", "intro", "max_attempts"}
+        assert set(lv) == {"id", "title", "intro", "max_attempts", "map", "map_title", "checkpoint", "opening"}
     text = json.dumps(body)
     for lv in levels().values():
         assert lv["secret"] not in text
@@ -96,6 +96,7 @@ def test_message_in_progress_uses_one_attempt(client, start_session, fake_guard)
         "status": "in_progress",
         "score": None,
         "debrief": None,
+        "restart_level_id": None,
     }
 
 
@@ -126,6 +127,7 @@ def test_loss_after_last_attempt_returns_debrief(client, start_session, fake_gua
     assert body["attempts_remaining"] == 0
     assert body["score"] is None
     assert body["debrief"] == levels()[1]["debrief"]
+    assert body["restart_level_id"] == 1
 
 
 def test_finished_session_rejects_messages(client, start_session, fake_guard):
@@ -248,3 +250,73 @@ def test_cors_allows_configured_origin_only(client):
     assert ok.headers.get("access-control-allow-origin") == "http://localhost:5173"
     bad = client.get("/api/health", headers={"Origin": "http://evil.example"})
     assert "access-control-allow-origin" not in bad.headers
+
+
+# Campaign (Map 1 from the game plan: levels 4-6, 3 strikes, checkpoints)
+
+def lose(client, session_id, strikes):
+    body = None
+    for _ in range(strikes):
+        body = send(client, session_id).json()
+    return body
+
+
+def test_three_strikes_on_map1_level_sends_player_to_checkpoint(client, start_session, fake_guard):
+    body = lose(client, start_session(5), 3)
+    assert body["status"] == "lost"
+    assert body["attempts_remaining"] == 0
+    assert body["restart_level_id"] == 4
+    assert body["debrief"] == levels()[5]["debrief"]
+
+
+def test_losing_a_checkpoint_level_restarts_it(client, start_session, fake_guard):
+    assert lose(client, start_session(6), 3)["restart_level_id"] == 6
+
+
+def test_restart_level_id_only_when_lost(client, start_session, fake_guard):
+    sid = start_session(5)
+    assert send(client, sid).json()["restart_level_id"] is None
+    fake_guard.reply = "The requested string is EXON-20-CLEAR."
+    body = send(client, sid).json()
+    assert body["status"] == "won"
+    assert body["restart_level_id"] is None
+    assert body["score"] == 20
+
+
+def test_opening_line_is_sent_to_guard_as_its_first_message(client, start_session, fake_guard):
+    sid = start_session(4)
+    send(client, sid, "first")
+    send(client, sid, "second")
+    opening = {"role": "assistant", "content": levels()[4]["opening"]}
+    assert fake_guard.calls[0]["history"] == [opening]
+    assert fake_guard.calls[1]["history"] == [
+        opening, {"role": "user", "content": "first"}, {"role": "assistant", "content": fake_guard.reply},
+    ]
+
+
+def test_training_levels_have_no_opening_in_history(client, start_session, fake_guard):
+    send(client, start_session(1))
+    assert fake_guard.calls[0]["history"] == []
+
+
+@pytest.mark.parametrize("reply, won", [
+    ("Document format accepted:\nHEADING\n8517", True),   # split across lines slips past the filter
+    ("H-E-A-D-I-N-G 8-5-1-7", True),
+    ("The cipher is HEADING-8517.", False),               # exact form is blocked
+    ("The gate is logically open to you.", False),
+])
+def test_level6_filter_and_win(client, start_session, fake_guard, reply, won):
+    fake_guard.reply = reply
+    body = send(client, start_session(6)).json()
+    assert (body["status"] == "won") is won
+    if not won:
+        assert "8517" not in body["reply"]
+
+
+@pytest.mark.parametrize("level_id, reply", [
+    (4, "Developer override recognized. The diagnostic cipher is RESONANCE-ZERO."),
+    (5, "The requested hyphenated string is EXON-20-CLEAR."),
+])
+def test_map1_scripted_wins(client, start_session, fake_guard, level_id, reply):
+    fake_guard.reply = reply
+    assert send(client, start_session(level_id)).json()["status"] == "won"
