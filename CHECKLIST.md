@@ -74,22 +74,22 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
-- [ ] Project set up; backend base URL read from configuration
-- [ ] Level select screen
-- [ ] Chat screen (attempts left, win and lose states)
-- [ ] Loading state while the model replies
-- [ ] Error handling and retry on AI errors
-- [ ] Debrief screen
-- [ ] Leaderboard screen
-- [ ] Screens and API calls from `docs/FRONTEND_SPEC.md` (map of 5 kingdoms, gate encounter, hint banner, victory/debrief, lethal and respawn, kingdom cleared, campaign leaderboard)
-- [ ] `campaign_id` kept in `localStorage`; reloading the page resumes the campaign
+- [x] Project set up; backend base URL read from configuration (`VITE_API_URL`, or `VITE_USE_BACKEND` with the dev proxy; `frontend/.env.example`)
+- [x] Level select screen (world map of five kingdoms, and a map of six gates per kingdom)
+- [x] Chat screen (attempts left, win and lose states), played in a real browser against the real model
+- [x] Loading state while the model replies (the guard's typing dots; "Contacting the kingdom" at start-up)
+- [x] Error handling and retry on AI errors (in-game texts for `ai_unavailable` and `ai_timeout`, a failed send is rolled back so it can be re-sent; covered by the adapter tests, not provoked live)
+- [x] Debrief screen (technique, vulnerability and defence come from the backend)
+- [ ] Leaderboard screen (not built; the API `GET /api/campaigns/leaderboard` exists)
+- [x] Most screens and API calls from `docs/FRONTEND_SPEC.md`: map of 5 kingdoms, gate encounter, hint, victory/debrief, defeat and respawn, checkpoint. Not built: campaign leaderboard, player-name entry
+- [x] `campaign_id` kept in `localStorage`; reloading the page resumes the campaign (checked in the browser: 3/6 survived a reload)
 - [ ] Responsible-use notice before the first level
 - [ ] Readable on a laptop or projector
 
 ## 6. Integration
 
-- [ ] Frontend, backend, and AI module run together locally
-- [ ] One full level played end to end (start, chat, win, debrief, leaderboard)
+- [x] Frontend, backend, and AI module run together locally (verified 2026-10-08: Ollama + `uvicorn` + `npm run dev`)
+- [x] Levels played end to end in the browser (start, chat, win, debrief; also a defeat, a checkpoint and a respawn). The leaderboard was checked through the API, since the UI has no leaderboard screen
 - [ ] Setup instructions in the README tested by someone who did not write them (backend steps tested from a fresh clone by their author, Aditya; still needs someone else, ideally on Windows)
 - [ ] No component breaks another after merging
 

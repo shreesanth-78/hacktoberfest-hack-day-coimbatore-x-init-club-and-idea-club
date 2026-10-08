@@ -36,7 +36,7 @@ export default function GuardianDialogue({ guardianName, messages, loading, send
         <div ref={endRef} />
       </div>
       <form className="scroll-input" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <textarea ref={taRef} value={text} rows={2} maxLength={800} disabled={disabled || loading}
+        <textarea ref={taRef} value={text} rows={2} maxLength={500} disabled={disabled || loading}
           placeholder={disabled ? 'The encounter has ended.' : placeholder || 'Speak to the guardian… (Enter sends)'}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}

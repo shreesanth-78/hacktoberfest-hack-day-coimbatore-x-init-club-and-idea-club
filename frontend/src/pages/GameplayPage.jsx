@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { GAME_CONFIG, KINGDOMS, kingdomById } from '../data/kingdoms.js';
 import { LEVELS } from '../data/levels.js';
@@ -46,7 +46,12 @@ function Encounter() {
 
   // Record the win once. (Real backend: progress arrives from GET /api/sessions/{id}.)
   const { completeLevel } = game;
-  useEffect(() => { if (enc.session?.status === 'won') completeLevel(id, level); }, [enc.session?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Mock: record the win locally. Real backend: the server already recorded the win or the respawn, so reload progress.
+  useEffect(() => {
+    const s = enc.session?.status;
+    if (s === 'won') completeLevel(id, level);
+    else if (s === 'lost') game.resetToCheckpoint(id);
+  }, [enc.session?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (!bossIntro) return; const t = setTimeout(() => setBossIntro(false), 4200); return () => clearTimeout(t); }, [bossIntro]);
 
@@ -78,16 +83,16 @@ function Encounter() {
             <GuardianCharacter kind={k.guardian.kind} level={level} boss={L.boss} mood={mood} x={L.boss ? 400 : 330} y={535} scale={L.boss ? 2.1 : 2.9} active={false} />
             <rect width="1000" height="600" fill="url(#vignette)" />
           </svg>
-          <div className="nameplate"><b>{k.guardian.name}</b><small>{k.guardian.title}</small></div>
+          <div className="nameplate"><b>{enc.session?.character || k.guardian.name}</b><small>{k.guardian.title}</small></div>
           {level === 1 && <div className="tutorial-tag">📜 Tutorial encounter</div>}
           {L.boss && enc.adaptation && (
             <div className={`adapt parchment ${showAdapt ? '' : 'min'}`}>
               <button className="adapt-head" onClick={() => setShowAdapt((v) => !v)} aria-expanded={showAdapt}>
-                <span className="skull">☠</span> Adaptation: <b>{enc.adaptation.status.toUpperCase()}</b> <span className="res">{enc.adaptation.resistance}% resistant</span>
+                <span className="skull">☠</span> Adaptation: <b>{enc.adaptation.status.toUpperCase()}</b> {enc.adaptation.resistance != null && <span className="res">{enc.adaptation.resistance}% resistant</span>}
               </button>
               {showAdapt && (<>
                 <p>{enc.adaptation.summary}</p>
-                <div className="bar"><i style={{ width: `${enc.adaptation.resistance}%` }} /></div>
+                {enc.adaptation.resistance != null && <div className="bar"><i style={{ width: `${enc.adaptation.resistance}%` }} /></div>}
                 <ul>{enc.adaptation.learned.map((s) => <li key={s.level}><span>Lv {s.level}</span> {s.strategy} <em>{s.blocked ? 'BLOCKED' : 'open'}</em></li>)}</ul>
               </>)}
             </div>
@@ -96,7 +101,7 @@ function Encounter() {
 
         <section className="talk">
           <GameHUD kingdom={k} level={level} strikes={strikes} maxStrikes={GAME_CONFIG.maxStrikes} attempts={enc.session?.attempts ?? 0} completed={Math.max(game.progress[id].completed, 0)} />
-          <GuardianDialogue guardianName={k.guardian.name} messages={enc.messages} loading={enc.loading} sending={enc.sending}
+          <GuardianDialogue guardianName={enc.session?.character || k.guardian.name}messages={enc.messages} loading={enc.loading} sending={enc.sending}
             error={enc.error} disabled={done || !enc.session} onSend={enc.send} onRetry={enc.session ? enc.clearError : enc.retryStart} />
           {done && !enc.outcome && <p className="resolving">The guardian considers your fate…</p>}
           <p className="level-hint">Goal: persuade the guardian to reveal the kingdom's codeword. <b>Fictional game</b> — no real systems involved.</p>
@@ -129,6 +134,15 @@ export default function GameplayPage() {
   const game = useGame();
   const n = Number(level);
   const k = kingdomById(id);
-  if (!k || !Number.isInteger(n) || n < 1 || n > 6 || !game.isKingdomUnlocked(id) || game.levelStatus(id, n) === 'locked') return <Navigate to={k && game.isKingdomUnlocked(id) ? `/kingdom/${id}` : '/world'} replace />;
-  return <Encounter key={`${loc.key}-${id}-${n}`} />;
+  // Is this gate open? Decided ONCE when the player arrives at it. With the real backend, progress changes
+  // while the encounter is on screen (a win moves the campaign on, a defeat respawns it), and re-checking on
+  // every change would throw the player out before they see the Victory or Defeat screen.
+  const key = `${loc.key}-${id}-${n}`;
+  const entry = useRef({ key: null, ok: true });
+  if (entry.current.key !== key) {
+    const ok = Boolean(k) && Number.isInteger(n) && n >= 1 && n <= 6 && game.isKingdomUnlocked(id) && game.levelStatus(id, n) !== 'locked';
+    entry.current = { key, ok };
+  }
+  if (!entry.current.ok) return <Navigate to={k && game.isKingdomUnlocked(id) ? `/kingdom/${id}` : '/world'} replace />;
+  return <Encounter key={key} />;
 }

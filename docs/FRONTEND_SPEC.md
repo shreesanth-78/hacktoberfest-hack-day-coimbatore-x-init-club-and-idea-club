@@ -1,6 +1,6 @@
 # Frontend spec: the 30-level campaign (for Kirupashankar)
 
-Status: **proposal from the AI owner (Mudiam). Kirupashankar reviews and changes anything that does not fit.** The API it relies on is described in `docs/BACKEND_CAMPAIGN_SPEC.md` (Aditya builds it) and the single-level endpoints in the main `README.md`.
+Status (2026-10-08): **this spec was written before the frontend existed. The frontend now exists (`frontend/`) and is connected to the real backend; see `frontend/README.md` for what runs.** The campaign API it describes is implemented by Aditya (`docs/BACKEND_CAMPAIGN_SPEC.md`). Differences between this spec and what was built: the UI uses a world map and a map per kingdom (not a flat 30-node map); the mock-flag advice in section 5 is replaced by the adapter in `frontend/src/services/backend.js`; the campaign leaderboard screen and player-name entry are **not built**; the boss panel shows the blocked tactics but no resistance percentage. The rest of this document remains the checklist of what the UI should show.
 
 ## 1. The game, in one page
 

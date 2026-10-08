@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { KINGDOMS } from '../data/kingdoms.js';
 import { useGame } from '../hooks/useGameState.jsx';
+import { USE_MOCK } from '../services/api.js';
 import { Cloud, Mountain, Pine, SharedDefs, Tree } from '../components/art.jsx';
 import KingdomEntrance from '../components/KingdomEntrance.jsx';
 import PlayerCharacter from '../components/PlayerCharacter.jsx';
@@ -32,7 +33,7 @@ export default function LandingPage() {
           <Link className="stone-btn big" to="/world">{started ? 'Continue Journey ›' : 'Begin the Adventure ›'}</Link>
         </div>
         <ul className="landing-facts"><li>5 kingdoms</li><li>30 guarded levels</li><li>Checkpoint at Level 3</li><li>Adaptive boss at Level 6</li></ul>
-        <small>Fictional game · mock guardians · ready for a FastAPI + Gemma/Ollama backend</small>
+        <small>{USE_MOCK ? 'Fictional game · mock guardians (no backend connected)' : 'Fictional game · guardians powered by Gemma, running locally through Ollama'}</small>
       </div>
     </main>
   );

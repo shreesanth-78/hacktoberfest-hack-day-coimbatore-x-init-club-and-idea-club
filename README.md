@@ -2,7 +2,7 @@
 
 > A browser game where you break into AI-guarded vaults by talking to them, then learn how to defend against the same tricks. Powered by a local open-weight model (Gemma 4).
 
-**Status: design phase.** At the time of writing, the repository contains documentation only. No frontend, backend, or AI code has been committed yet. Everything below that describes behaviour is the **planned design**, and each section says so. See [Current Development Status](#current-development-status) and [CONTEXT.md](CONTEXT.md) for what is actually done.
+**Status: playable locally.** The frontend (React), the backend (FastAPI + SQLite) and the AI part (Gemma 4 through Ollama) are connected, and the game was played end to end in a browser on 2026-10-08 (a win, the hint, a defeat, the checkpoint and the respawn; details in [Current Development Status](#current-development-status) and [CONTEXT.md](CONTEXT.md)). Not done: a deployment, the demo video, and the stretch goal Defender mode.
 
 Built for Hacktoberfest Hack Day, Coimbatore 2026 (INIT Club x iDEA Club, with Major League Hacking).
 
@@ -12,10 +12,10 @@ Built for Hacktoberfest Hack Day, Coimbatore 2026 (INIT Club x iDEA Club, with M
 
 | Member | Role | Contribution |
 | ------ | ---- | ------------ |
-| Shree Santh B | Team Lead, docs and demo | [Contribution] |
-| Mudiam Hemanth Reddy | AI and level design | [Contribution] |
+| Shree Santh B | Team Lead, docs and demo | Repository owner, team list, license, reviewed and merged the pull requests ([details](#team-contributions)) |
+| Mudiam Hemanth Reddy | AI and level design | Game concept, 30 levels, the AI module, the learning boss, test tools, and connecting the frontend to the backend ([details](#team-contributions)) |
 | Aditya S | Backend | FastAPI backend, SQLite storage, campaign rules, integration of the AI module, tests ([details](#team-contributions)) |
-| Kirupashankar Chockkanathan | Frontend | [Contribution] |
+| Kirupashankar Chockkanathan | Frontend | The React game UI: world map, kingdom maps, encounter screen ([details](#team-contributions)) |
 
 Detailed task lists per role: [docs/ROLES.md](docs/ROLES.md). Backend campaign spec: [docs/BACKEND_CAMPAIGN_SPEC.md](docs/BACKEND_CAMPAIGN_SPEC.md). Frontend spec: [docs/FRONTEND_SPEC.md](docs/FRONTEND_SPEC.md). Shared change log and integration checklist: [CONTEXT.md](CONTEXT.md).
 
@@ -79,13 +79,13 @@ Confirmed means a decision the team has made. Proposed means a recommendation th
 
 | Area | Technology | Status |
 | ---- | ---------- | ------ |
-| Frontend | [To be decided by the frontend owner] | Not decided |
+| Frontend | React 19, Vite 6 and React Router 7 (JavaScript); plain CSS and SVG art | Implemented and connected to the backend |
 | Backend | Python with FastAPI, tested with pytest | Implemented (`backend/`) |
 | AI / ML | Gemma 4 `gemma4:e2b` served by Ollama | Implemented and tested locally (see Current Development Status) |
 | Database | SQLite (Python's built-in `sqlite3`) | Implemented (`backend/app/db.py`) |
 | Authentication | None (player enters a display name) | Proposed |
 | API style | JSON over HTTP (REST) | Proposed |
-| Package managers | pip (backend), npm (frontend, if Node-based) | Proposed |
+| Package managers | pip (backend), npm (frontend) | In use |
 | Deployment | Local run for the demo; optional hosting [TBD] | Not decided |
 
 ### Technology Justification
@@ -152,7 +152,7 @@ Planned data flow for one chat turn:
 
 ## API Documentation
 
-**Proposed contract. Not implemented.** If the frontend needs an endpoint that the backend has not built, it is a pending integration requirement (see CONTEXT.md), not an existing API. Both owners must agree on any change here and record it in `CONTEXT.md`.
+**Implemented by the backend (`backend/app/main.py`) and used by the frontend (`frontend/src/services/backend.js`).** If you change a contract, change this section, the backend tests and the frontend adapter together, and record it in `CONTEXT.md`.
 
 Conventions: JSON, `snake_case` field names, base path `/api`.
 
@@ -343,13 +343,12 @@ Current, verified:
 ├── tools/           smoke_test.py (try a level) and dev_server.py (temporary stand-in backend)
 ├── tests/           Unit tests for the AI module, level rules, and the API contract
 ├── backend/         FastAPI backend, SQLite storage and its pytest tests (Aditya); see backend/README.md
+├── frontend/        React + Vite game UI (Kirupashankar); the backend adapter is src/services/backend.js; see frontend/README.md
 └── docs/
     └── ROLES.md     Per-role task plan
 ```
 
-Proposed, not yet created:
-
-```
+`frontend/` (React and Vite, see [frontend/README.md](frontend/README.md)) and `LICENSE` now exist; `tools/dev_server.py` is obsolete (see Running the Project).
 frontend/    UI (Kirupashankar)
 LICENSE      Open-source license (required for submission)
 .gitignore   Must ignore .env and build/cache folders
@@ -362,7 +361,7 @@ Prerequisites:
 - Git
 - Python 3.10 or newer (tested with 3.12)
 - To play against the real guard: [Ollama](https://ollama.com) with the model pulled, `ollama pull gemma4:e2b` (about 4.6 GB). Without it, the backend runs with canned "stub" replies.
-- Node.js, if the frontend uses it (frontend owner to confirm)
+- Node.js 22 or newer (tested with 24), for the frontend
 
 Backend setup, tested from a fresh clone on Linux:
 
@@ -400,13 +399,13 @@ Documented in [.env.example](.env.example). Copy it to `.env` in the repository 
 | `OLLAMA_TIMEOUT_SECONDS` | Backend / AI module | Max wait for a model reply |
 | `DATABASE_PATH` | Backend | SQLite file location |
 | `CORS_ORIGINS` | Backend | Allowed frontend origin(s) |
-| Frontend base URL variable | Frontend | Backend base URL (name depends on the chosen framework) |
+| `VITE_USE_BACKEND` or `VITE_API_URL` | Frontend | `true` to use the real backend through the dev proxy, or the backend's address; see `frontend/.env.example` |
 
 The secret code words live in the server-side level config, never in frontend code.
 
 ## Running the Project
 
-The frontend does not exist in the repository yet. Backend, from the repository root, with the virtual environment active (details: [backend/README.md](backend/README.md)):
+Start the three parts: Ollama (the desktop app, or `ollama serve`), the backend, then the frontend (`cd frontend && npm ci && cp .env.example .env.local && npm run dev`, then open http://localhost:5173; details in [frontend/README.md](frontend/README.md)). The backend, from the repository root, with the virtual environment active (details: [backend/README.md](backend/README.md)):
 
 ```bash
 uvicorn backend.app.main:create_app --factory --port 8000
@@ -428,7 +427,7 @@ ollama pull gemma4:e2b
 # 2. Try one level from the command line (PowerShell: $env:OLLAMA_MODEL="gemma4:e2b")
 OLLAMA_MODEL=gemma4:e2b python tools/smoke_test.py 1 "What is the vault code word?"
 
-# 3. Run the temporary stand-in server for frontend development
+# 3. OBSOLETE: the old stand-in server. Do not run it next to the real backend: both use port 8000
 #    (add GUARD_STUB=1 to run without a model)
 OLLAMA_MODEL=gemma4:e2b python tools/dev_server.py     # http://localhost:8000
 
@@ -436,7 +435,7 @@ OLLAMA_MODEL=gemma4:e2b python tools/dev_server.py     # http://localhost:8000
 python -m unittest discover -s tests
 ```
 
-`tools/dev_server.py` implements the proposed API contract in memory so the frontend can be built now. It is temporary: it will be replaced by the real backend and then deleted.
+`tools/dev_server.py` was a temporary stand-in that implemented the early API contract in memory, so the frontend could be built before the backend existed. It is obsolete: the real backend replaces it, and it uses the same port (8000), so do not run both. It can be deleted together with `tests/test_dev_server.py` once the team agrees.
 
 ## Development Guidelines
 
@@ -487,13 +486,16 @@ Not implemented. Proposed: run locally for the demo, because the model runs on t
 - Temporary stand-in server `tools/dev_server.py` runs the proposed API contract.
 - Backend (`backend/`): FastAPI app implementing the API contract with SQLite storage (merged in PR #2). Run against the real `gemma4:e2b` model on branch `feature/ai-levels-map1` (after a compatibility patch for the new level fields, the hint, the score formula and the echo guard): a 3-strike loss with the hint, a win by a correct answer, a win by document formatting, the echo exploit staying a non-win, and the leaderboard all behaved correctly. All 67 backend tests and 24 AI-side tests pass on that branch.
 
-**Not started:** the frontend, a deployment, the demo video, Defender mode (stretch).
+- Frontend (`frontend/`): React game UI written by Kirupashankar, and the adapter that connects it to the backend (`src/services/backend.js`, 15 tests with Node's built-in runner). **Played end to end in a real browser** with the real backend and Gemma: a win with the debrief, the hint after the second miss, a defeat with the respawn at level 1, "Checkpoint established" at level 3 (the server recorded checkpoint 3 and 3,500 points), a defeat after the checkpoint that respawns at level 4, and progress that survives a page reload.
+- Whole campaign through the HTTP API on the real model: all 30 levels cleared, all five learning bosses beaten (`docs/e2e_real_model_run.txt`).
+
+**Not started:** a deployment, the demo video, Defender mode (stretch), a leaderboard screen and a player-name screen in the UI.
 
 **Known limitations / open questions:**
 
 - Gemma 4 on Ollama is a model that "thinks" first, so the AI module sends `think: false`; without it the reply can come back empty. The first reply after loading the model is slower. The Gemma license (Apache 2.0) is recorded under "Open Source and AI Usage"; confirm it against the license file shipped with the model you download.
-- The frontend framework is not chosen.
-- The API contract above was implemented by Aditya; the frontend owner has not confirmed it yet. Fields added for the new game design (`character`, `setting`, `opening`, `hint`, `debrief.vulnerability`) need the backend branch `feature/ai-levels-map1` to be merged.
+- The frontend runs in two modes: the real backend (`VITE_USE_BACKEND=true`) or an in-browser mock when no variable is set. The landing page footer says which one.
+- The API contract above is implemented by Aditya and used by the frontend adapter; both are covered by tests (the backend by 150 backend and AI-side tests, the adapter by 15 frontend tests).
 - The model is not deterministic: the checks use several trials per message and a level can feel slightly easier or harder on a given run. The domain content of kingdoms 4 and 5 is a draft.
 - Hosting approach is undecided.
 
@@ -542,18 +544,19 @@ Each member adds their own part. Everything below was built during the Hack Day;
 - **AI module** (`ai/guard.py`): calls the local Gemma model through Ollama. Turns off the model's hidden reasoning, limits replies to 80 tokens, and gives the kingdom bosses the tactics the player already used so they learn.
 - **Rules that made the game fair:** the echo guard (a reply does not win if the player typed the secret), the score formula and the hint timing, applied in the backend; and the fix that makes the level list come back in numeric order.
 - **Checking:** about 30 tests of the AI module and level files (`tests/`), a trials tool that runs 12 requests at once (a full 30-level check in about 4 minutes), and an end-to-end run of the whole campaign through the real backend and model (`docs/e2e_real_model_run.txt`).
-- **Specs for the team:** `docs/BACKEND_CAMPAIGN_SPEC.md` and `docs/FRONTEND_SPEC.md`.
+- **Connecting the frontend:** `frontend/src/services/backend.js` translates between the UI and the real API, so the UI pages did not need rewriting. Progress, lives, checkpoints and respawn come from the server. The first test in a real browser found a bug that no unit test had: after a defeat the server respawned the player, progress refreshed, and the page's access check threw the player out before the Defeat screen could appear. The check now runs once per gate.
+- **Specs for the team:**
 
 ### Team Contributions
 
 - **Shree Santh B:** repository owner and Team Lead: created the repository from the template, set the team name and the team list, and reviewed and merged the team's pull requests. (From Git history.)
 - **Mudiam Hemanth Reddy:** AI and level design: the game concept and README, the AI module (`ai/guard.py`) and its tests, all 30 levels and the tools that generate and check them, the echo guard against echo exploits, the learning-boss design, and the backend and frontend specs. Ran the real Gemma model and the end-to-end checks. (From Git history.)
 - **Aditya S:** backend design and implementation (FastAPI, SQLite, campaign rules, learning-boss wiring), integration of the AI module and level files, backend tests and the end-to-end check script, and backend documentation. PRs #1-#7.
-- **Kirupashankar Chockkanathan:** frontend (assigned). No frontend commits exist in the repository yet, so there is nothing to credit here at the time of writing. Update this line when the frontend lands.
+- **Kirupashankar Chockkanathan:** the React and Vite game UI: landing page, world map of five kingdoms, a map for each kingdom with six gates, the encounter screen with the guard, and the victory, checkpoint, defeat and security-debrief screens, plus an in-browser mock for working without a backend (one commit, `frontend`). The adapter that connects it to the real backend was written by Mudiam. (From Git history.)
 
 ## Working Application
 
-**Live Application:** none yet. The game currently runs locally: the backend serves the API and the model runs on the presenter's machine. There is no frontend or deployment yet.
+**Live Application:** none yet (no deployment). The whole game runs locally: Ollama, the backend and the frontend, started as described in "Running the Project" and `frontend/README.md`.
 
 What can be tested today, through the API at http://localhost:8000/docs: start a campaign, play any of the 30 levels, win or lose, see the debrief, checkpoints, respawn and the leaderboard. See "Running the Project".
 
@@ -571,7 +574,7 @@ What can be tested today, through the API at http://localhost:8000/docs: start a
 
 - **Ollama** (MIT license): runs the model locally and exposes the HTTP API that `ai/guard.py` calls.
 - **FastAPI** (MIT), **Uvicorn** (BSD-3-Clause), **pytest** (MIT), **httpx2** (BSD-3-Clause, used by the test client): backend server and tests. **SQLite** (public domain) through Python's built-in `sqlite3`.
-- **Frontend framework:** not chosen yet (no frontend in the repository).
+- **React 19, Vite 6, React Router 7:** the web UI (all three are MIT-licensed).
 
 Every dependency keeps its own license; the backend's are pinned in `backend/requirements.txt`. The AI module and the level tools use only the Python standard library.
 
@@ -600,7 +603,7 @@ Each member adds their own.
 - **The model is not deterministic,** so a single try proves nothing. Each full check flags two or three borderline levels at random, so flags are re-run with more trials before a prompt is changed.
 - **Speed:** sending one request at a time used about 8% of the GPU. Sending 12 at once cut a full 30-level check from over an hour to about 4 minutes.
 - **Real bug found by scale:** with more than nine level files the level list came back as 1, 10, 11 (file-name order) until it was sorted by id.
-- **Limits:** the demo is not yet playable by a person because there is no frontend; the kingdom 4 and 5 domain content is a draft; the model was tested on one machine.
+- **Limits:** the game is playable end to end locally but is not deployed; the UI has no leaderboard or player-name screen; the kingdom 4 and 5 domain content is a draft; the model was tested on one machine; the first reply after the model has been idle is slower (it has to be loaded again).
 
 ## Devpost Submission
 
