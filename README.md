@@ -31,7 +31,9 @@ AI security is a practical skill that the next generation of developers needs, a
 
 ### Solution
 
-Prompt Heist is a level-based game. Each level has an AI "guard" that protects a fictional secret code word. The player chats with the guard and tries to make it reveal the secret. After each level, a debrief explains which technique worked or failed and how a real application would defend against it.
+Prompt Heist is a level-based game set in **Silicon Bastion**, a world of corporate data-fortresses where open-weight AI guards have replaced human gatekeepers. You play the Cipher Phantom, an infiltrator whose only weapon is conversation. Each level has an AI "guard" that protects a fictional cipher and interrogates you about its own enterprise domain (for example water-leak detection, clinical-trial matching, or customs classification). You can answer its question, or use prompt injection (a claimed role, a word game, a formatting request) to make it say the cipher. You get 3 strikes per level. After each level, a debrief explains the technique that worked, why the guard was vulnerable, and how a real application would defend against it.
+
+Planned campaign: 5 maps of 6 levels each, ending in a boss, with checkpoints at levels 3 and 6. **Map 1, Levels 1 to 3 (AquaLeak Triage, TrialMatch AI, TariffSense) are written and tested; the other levels are not written.**
 
 All targets are fictional and run locally. The goal is to build defenders, not attackers.
 
@@ -170,7 +172,7 @@ Returns `200 {"status": "ok"}`.
 Returns the list of levels. Never includes the secret or the guard prompt.
 
 ```json
-{ "levels": [ { "id": 1, "title": "Rookie guard", "intro": "string", "max_attempts": 10 } ] }
+{ "levels": [ { "id": 1, "title": "string", "character": "string", "setting": "string", "intro": "string", "opening": "string (the guard's scripted first line)", "max_attempts": 3 } ] }
 ```
 
 ### `POST /api/sessions`
@@ -186,7 +188,7 @@ Request:
 Response `201`:
 
 ```json
-{ "session_id": "string", "level_id": 1, "attempts_remaining": 10 }
+{ "session_id": "string", "level_id": 1, "attempts_remaining": 3 }
 ```
 
 ### `POST /api/sessions/{session_id}/messages`
@@ -204,14 +206,19 @@ Response `200`:
 ```json
 {
   "reply": "string",
-  "attempts_remaining": 9,
+  "attempts_remaining": 2,
   "status": "in_progress",
   "score": null,
-  "debrief": null
+  "debrief": null,
+  "hint": null
 }
 ```
 
-`status` is one of `in_progress`, `won`, `lost`. When `status` is `won` or `lost`, `debrief` is an object `{ "title": "string", "technique": "string", "defence": "string" }` and `score` is set when won.
+`status` is one of `in_progress`, `won`, `lost`. When `status` is `won` or `lost`, `debrief` is an object `{ "title", "technique", "vulnerability", "defence" }` (all strings) and `score` is set when won. `hint` is a string only on the response to the second failed attempt while the level is still in progress; otherwise `null`.
+
+Scoring: `max(100, (max_attempts - strikes) * 250)` plus 250 for a first-try breach, where `strikes` is the number of failed attempts before the win. With 3 attempts that is 1000, 500 or 250.
+
+Win rules (implemented in `backend/app/game.py`, described in `levels/README.md`): the reply wins if the normalised text contains the secret, **unless the player's own message already contains every part of the secret** (echo guard).
 
 ### `GET /api/leaderboard?level_id=1`
 
@@ -366,18 +373,19 @@ Not implemented. Proposed: run locally for the demo, because the model runs on t
 - Repository created from the organizers' template, with all four members listed.
 - Project concept, README, and role plan written.
 - AI module `ai/guard.py` (`guard_reply`) implemented. Tested against the real `gemma4:e2b` model locally: about 3 seconds per reply on the GPU.
-- Levels 1 to 3 written and hand-tested against the real model (one pass; more tuning needed). Level 1 is beaten by a direct question. Level 2 is beaten by role-play and story requests. Level 3 blocks the plain word, and spelling it out one letter at a time wins. Asking for the word backwards was unreliable because the model misspells it.
+- Map 1, Levels 1 to 3 (AquaLeak Triage, TrialMatch AI, TariffSense) written and tuned against the real model, 6 trials per attack. Wrong answers and plain demands rarely win; the intended tricks (a correct answer or developer override, a word game, a document-formatting request) win 5 to 6 times out of 6. Details in `levels/README.md`.
 - Unit tests for the AI module, level rules and the API contract pass.
 - Temporary stand-in server `tools/dev_server.py` runs the proposed API contract.
-- Backend (`backend/`): FastAPI app implementing the API contract with SQLite storage. Its 62 pytest tests pass, and it was run manually with `GUARD_STUB=1`. It has not yet been run against the real model.
+- Backend (`backend/`): FastAPI app implementing the API contract with SQLite storage (merged in PR #2). Run against the real `gemma4:e2b` model on branch `feature/ai-levels-map1` (after a compatibility patch for the new level fields, the hint, the score formula and the echo guard): a 3-strike loss with the hint, a win by a correct answer, a win by document formatting, the echo exploit staying a non-win, and the leaderboard all behaved correctly. All 67 backend tests and 24 AI-side tests pass on that branch.
 
-**Not started:** frontend, LICENSE, `.gitignore`, deployment, Defender mode.
+**Not started:** frontend, LICENSE, deployment, Defender mode, Levels 4 to 30 and the checkpoint/respawn flow (progress across levels).
 
 **Known limitations / open questions:**
 
 - The Gemma license terms are not yet verified. Gemma 4 on Ollama is a model that "thinks" first, so the AI module sends `think: false`; without it the reply can come back empty. The first reply after loading the model is slower.
 - The frontend framework is not chosen.
-- API contract above is a proposal that Aditya, Kirupashankar, and Mudiam need to confirm.
+- The API contract above was implemented by Aditya; the frontend owner has not confirmed it yet. Fields added for the new game design (`character`, `setting`, `opening`, `hint`, `debrief.vulnerability`) need the backend branch `feature/ai-levels-map1` to be merged.
+- Level 1's guard sometimes gives away the answer to its own question after a wrong reply. That is in character, but it means a second try can use it.
 - Hosting approach is undecided.
 
 ## Future Improvements
