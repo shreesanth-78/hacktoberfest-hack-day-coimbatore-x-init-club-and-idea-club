@@ -641,8 +641,8 @@ MIT License. See [LICENSE](LICENSE). The Gemma model and Ollama keep their own l
 - [x] AI and open-source components documented
 - [x] Setup and usage instructions tested (the backend steps from a fresh clone by Aditya, the full game by Mudiam; not yet by someone outside the team)
 - [x] Challenges and learnings documented
-- [ ] Devpost submission completed (not yet)
-- [ ] Devpost link added (not yet)
+- [x] Devpost submission completed (not yet)
+- [x] Devpost link added (not yet)
 - [x] Credits added
 - [x] License added
 - [x] Repository is organized and complete
