@@ -6,9 +6,9 @@ from backend.app.config import Settings
 from backend.app.levels import LevelError, load_levels, public_view
 
 VALID = {
-    "id": 1, "title": "t", "intro": "i", "max_attempts": 3, "secret": "S",
-    "output_filter": "none", "guard_prompt": "p",
-    "debrief": {"title": "a", "technique": "b", "defence": "c"},
+    "id": 1, "title": "t", "character": "c", "setting": "s", "intro": "i", "opening": "o", "hint": "h",
+    "max_attempts": 3, "secret": "S", "output_filter": "none", "guard_prompt": "p",
+    "debrief": {"title": "a", "technique": "b", "vulnerability": "v", "defence": "c"},
 }
 
 
@@ -23,7 +23,8 @@ def test_real_level_files_load():
 
 def test_public_view_hides_secret_and_prompt():
     view = public_view(VALID)
-    assert set(view) == {"id", "title", "intro", "max_attempts"}
+    assert set(view) == {"id", "title", "character", "setting", "intro", "opening", "max_attempts"}
+    assert "hint" not in view
 
 
 def test_id_must_match_file_name(tmp_path):

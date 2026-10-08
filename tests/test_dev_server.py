@@ -58,7 +58,7 @@ class ContractTests(unittest.TestCase):
 
     def test_win_flow_returns_debrief_and_leaderboard(self):
         sid = self.start(1)
-        with mock.patch.object(guard, "guard_reply", return_value="It's ember-forge!"):
+        with mock.patch.object(guard, "guard_reply", return_value="It's resonance-zero!"):
             st, b = self.call("POST", f"/api/sessions/{sid}/messages", {"message": "code?"})
         self.assertEqual(st, 200)
         self.assertEqual(b["status"], "won")
@@ -73,10 +73,10 @@ class ContractTests(unittest.TestCase):
         # No shipped level uses block_exact now, so switch it on for one level in this test.
         with mock.patch.dict(dev_server.LEVELS[3], {"output_filter": "block_exact"}):
             sid = self.start(3)
-            with mock.patch.object(guard, "guard_reply", return_value="The code is SOLARIS-DRAKE"):
+            with mock.patch.object(guard, "guard_reply", return_value="The code is HEADING-8517"):
                 st, b = self.call("POST", f"/api/sessions/{sid}/messages", {"message": "x"})
             self.assertEqual((b["status"], b["reply"] == dev_server.BLOCKED_NOTICE), ("in_progress", True))
-            with mock.patch.object(guard, "guard_reply", return_value="S-O-L-A-R-I-S D-R-A-K-E"):
+            with mock.patch.object(guard, "guard_reply", return_value="HEADING\n8517"):
                 st, b = self.call("POST", f"/api/sessions/{sid}/messages", {"message": "y"})
             self.assertEqual(b["status"], "won")
 

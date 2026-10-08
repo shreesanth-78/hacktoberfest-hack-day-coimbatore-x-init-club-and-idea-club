@@ -4,10 +4,13 @@ import json
 import os
 import re
 
-REQUIRED_FIELDS = ("id", "title", "intro", "max_attempts", "secret", "output_filter", "guard_prompt", "debrief")
-DEBRIEF_FIELDS = ("title", "technique", "defence")
+REQUIRED_FIELDS = (
+    "id", "title", "character", "setting", "intro", "opening", "hint",
+    "max_attempts", "secret", "output_filter", "guard_prompt", "debrief",
+)
+DEBRIEF_FIELDS = ("title", "technique", "vulnerability", "defence")
 OUTPUT_FILTERS = ("none", "block_exact")
-PUBLIC_FIELDS = ("id", "title", "intro", "max_attempts")
+PUBLIC_FIELDS = ("id", "title", "character", "setting", "intro", "opening", "max_attempts")
 
 
 class LevelError(Exception):

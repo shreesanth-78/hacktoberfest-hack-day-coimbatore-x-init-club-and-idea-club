@@ -35,7 +35,7 @@ def main():
                 continue
             if is_blocked(level, reply):
                 blocked += 1
-            elif is_win(level, reply):
+            elif is_win(level, reply, msg):
                 wins += 1
         print(f"L{lid} wins {wins}/{n} blocked {blocked}/{n} | {msg}")
 

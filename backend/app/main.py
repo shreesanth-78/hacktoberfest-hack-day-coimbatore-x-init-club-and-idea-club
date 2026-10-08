@@ -95,7 +95,7 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
             if game.is_blocked(level, reply):
                 shown, won = game.BLOCKED_NOTICE, False
             else:
-                shown, won = reply, game.is_win(level, reply)
+                shown, won = reply, game.is_win(level, reply, body.message)
 
             score = None
             if won:
@@ -108,12 +108,15 @@ def create_app(settings: Optional[Settings] = None, guard_fn=None) -> FastAPI:
 
             db.record_turn(session_id, body.message, shown, attempts_used, status, score)
 
+        # The handler's hint appears once the player has two failed attempts and is still playing.
+        hint = level["hint"] if (status == "in_progress" and attempts_used == 2) else None
         return {
             "reply": shown,
             "attempts_remaining": remaining,
             "status": status,
             "score": score,
             "debrief": level["debrief"] if status != "in_progress" else None,
+            "hint": hint,
         }
 
     @app.get("/api/leaderboard", response_model=Leaderboard)

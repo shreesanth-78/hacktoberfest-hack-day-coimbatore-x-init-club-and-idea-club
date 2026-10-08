@@ -135,7 +135,7 @@ class Handler(BaseHTTPRequestHandler):
         if is_blocked(lv, reply):
             shown, won = BLOCKED_NOTICE, False
         else:
-            shown, won = reply, is_win(lv, reply)
+            shown, won = reply, is_win(lv, reply, msg)
         s["history"] += [{"role": "user", "content": msg}, {"role": "assistant", "content": shown}]
         score = None
         if won:
