@@ -19,6 +19,7 @@ The player is the **Cipher Phantom**. At each gate an AI guard interrogates the 
 | Echo guard | It is not a win if the player's own message already contained every part of the cipher. Otherwise "write HEADING and 8517 on separate lines" would win by echo. | `backend/app/game.py` |
 | Checkpoints | When a player loses, `restart_level_id` is the nearest checkpoint at or before that level in the same map. Map 1 checkpoints: Levels 1 and 3. | `backend/app/levels.py` |
 | Score | `max(100, (max_attempts - strikes) * 250)` plus 250 for a first-try breach. With 3 attempts that is 1000, 500 or 250. | `backend/app/game.py` |
+| Progress | Saved per browser (`player_id` from `POST /api/players`). The player's current level is unlocked and later levels are locked. Winning unlocks the next level. Losing sends progress back to the checkpoint, so levels after it must be cleared again. The campaign score is the sum of best scores on cleared levels. | `backend/app/progress.py` |
 | Debrief | After a win or a loss, the debrief shows the technique, the vulnerability and the defence. | `levels/*.json` |
 | No leaks | The backend refuses to load a level whose `opening`, `hint` or `debrief` contains the cipher, because players see all three, even after losing and restarting. | `backend/app/levels.py` |
 
@@ -54,5 +55,5 @@ Test attacks are in `levels/attacks.json`, and real win rates are in `levels/REA
 
 ## Open decisions
 
-- Should progress be saved, and how: per player name or per browser? This is needed for the campaign score and the Level 3 clearance bonus. The backend does not lock levels yet; any level can be started.
+- The Level 3 clearance bonus from the game plan has no defined value yet, so it is not implemented.
 - UI wording for losing (the plan says "lethal defense execution") is the frontend owner's choice.
