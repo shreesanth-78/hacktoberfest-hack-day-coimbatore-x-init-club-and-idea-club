@@ -52,6 +52,7 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 | Date | Contributor | Component | Changes Made | Files Modified | Dependencies or Impact | Status |
 | ---- | ----------- | --------- | ------------ | -------------- | ---------------------- | ------ |
+| 2026-10-08 | Aditya S | Docs / Backend plan | Reviewed Mudiam's AI module, level format and stand-in server (all 18 tests pass on Aditya's machine). Confirmed the level format and the filter/win rules. Recorded backend decisions: FastAPI, pytest, SQLite. Added the backend layout and the plan for running the model on Mudiam's laptop | `CONTEXT.md`, `CHECKLIST.md` | No code yet. Backend will import `ai.guard` unchanged and lives only in `backend/` | Pushed on branch `feature/backend-api` |
 | 2026-10-08 | Mudiam Hemanth Reddy | AI / integration | Added `guard_reply` (Ollama, `think: false`), Levels 1-3 with debriefs, `output_filter` field and win/filter rules, smoke test, TEMPORARY stand-in server implementing the API contract, 18 tests. Pulled `gemma4:e2b` and tested on the real model | `ai/guard.py`, `levels/*`, `tools/smoke_test.py`, `tools/dev_server.py`, `tests/*`, `.env.example`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New field `output_filter` in level files (Aditya must apply the rules in `levels/README.md`). Frontend can use `tools/dev_server.py` as a mock. Needs Ollama and the model on any machine that runs the real AI | Implemented and tested locally; push pending (see Git) |
 | 2026-10-08 | Mudiam Hemanth Reddy | Docs | Rewrote README for Prompt Heist (proposed stack, architecture, API contract, status); added `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | `README.md`, `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | None (no code). Defines the proposed API contract that backend and frontend must confirm | Pushed |
 | 2026-10-08 | Mudiam Hemanth Reddy | Docs | Added Prompt Heist README and per-role task plan | `README.md`, `docs/ROLES.md` | None | Pushed |
@@ -75,8 +76,18 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 - APIs and endpoints implemented: none yet.
 - Business logic, database, auth: none yet. Auth not planned.
-- Pending: project setup and health check; sessions; messages endpoint; deterministic win check; attempt counting; scoring; SQLite; leaderboard; validation and error format; tests.
-- Depends on: the AI module interface (`guard_reply`), the level config format from Mudiam, the confirmed API contract.
+- Stack (decided by the backend owner): **FastAPI**, **pytest** with FastAPI's `TestClient`, and **SQLite** through Python's built-in `sqlite3`. Reasons are in section D.
+- Uses `ai/guard.py` as is (`guard_reply`, `AIUnavailableError`, `AITimeoutError`, `GUARD_STUB=1`). The backend does not copy or edit Mudiam's files.
+- Build order:
+  1. `backend/` scaffold, `GET /api/health`, config from env, error format.
+  2. `game.py`: filter, win check and scoring, with unit tests. Ported from the reference rules in `tools/smoke_test.py`.
+  3. Level loader for `levels/*.json`.
+  4. Sessions and messages endpoints, with attempt counting. A failed AI call does not use an attempt.
+  5. SQLite storage and the leaderboard.
+  6. API tests for every endpoint and error code: contract checks like `tests/test_dev_server.py`, plus the 502/504 paths using a fake `guard_reply`.
+  7. Run against the real model on Mudiam's laptop. Then `tools/dev_server.py` can be deleted.
+- Development runs with `GUARD_STUB=1`, so no model is needed on Aditya's laptop.
+- Depends on: confirmed API contract (Kirupashankar).
 
 ### AI Development (Mudiam Hemanth Reddy)
 
@@ -106,9 +117,25 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 3. The secret and guard prompt never leave the server.
 4. Error format: `{"error": {"code", "message"}}`; statuses 400, 404, 409, 502, 504.
 5. A failed AI call does not consume an attempt.
-6. Level config format: defined in `levels/README.md` (proposal, includes `output_filter`). Aditya must confirm it and the filter/win rules.
+6. Level config format: defined in `levels/README.md`, including `output_filter`. **Confirmed by Aditya on 2026-10-08, including the filter and win rules.** As in `tools/dev_server.py`, the backend stores the shown reply (the blocked notice when a reply is filtered) in the history that is sent back to the model. History roles are `user` and `assistant`, as `guard_reply` expects.
 7. `tools/dev_server.py` is a TEMPORARY stand-in for the backend. Delete it once the real backend passes `tests/test_dev_server.py`-style checks.
 8. Gemma 4 on Ollama needs `think: false` or replies can be empty (found while testing).
+9. **Backend framework: FastAPI** (backend owner, 2026-10-08). Request and response models enforce the contract. `/docs` gives Kirupashankar a live API page. `TestClient` makes endpoint tests simple. Flask would need extra libraries for validation and docs.
+10. **Database: SQLite (SQL)** (backend owner, 2026-10-08). The data is relational: sessions have many messages, and the leaderboard is a sorted query. It needs no server, account, credentials or internet, and `sqlite3` is built into Python. Online databases were considered:
+    - Supabase (hosted Postgres) or MongoDB Atlas would add a signup, a secret key in `.env`, and a dependency on venue Wi-Fi during the demo, for no gain while one backend serves the game.
+    - MongoDB's document model does not suit leaderboard queries as well.
+    - All SQL lives in `backend/app/db.py`. If the team later hosts the backend online, that one file can move to Supabase Postgres.
+11. **Where things run.** The model runs only on Mudiam's laptop; Aditya's laptop cannot run it. The backend code lives in this repo, and any machine can run it.
+    - Development: run the backend with `GUARD_STUB=1`. No model is needed.
+    - Integration over the same network: Mudiam starts Ollama with `OLLAMA_HOST=0.0.0.0` so it listens on the LAN and allows port 11434 through the firewall. The backend machine sets `OLLAMA_HOST=http://<mudiam-ip>:11434`. Venue Wi-Fi may block device-to-device traffic, so test this early.
+    - Demo (safest): clone the repo on Mudiam's laptop and run the backend, the frontend and Ollama all there. No network dependency.
+12. **File ownership.** These folders keep merge conflicts away:
+    - `backend/` (app code and its tests in `backend/tests/`): Aditya
+    - `ai/`, `levels/`, `tools/`, `tests/`: Mudiam
+    - `frontend/`: Kirupashankar
+    - `LICENSE`, `.gitignore`: Shree Santh
+
+    Shared docs (`README.md`, `CONTEXT.md`, `CHECKLIST.md`): pull right before editing, edit only your own sections plus one change-log row, and push straight away.
 
 **Known integration issues:** none observed yet, because nothing is built. Risk to watch: the frontend and backend building against different assumptions about the contract in the README.
 
@@ -119,7 +146,8 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 | Task | Owner | Depends on | Next steps | Status | Acceptance criteria |
 | ---- | ----- | ---------- | ---------- | ------ | ------------------- |
 | Confirm the API contract in the README | Aditya, Kirupashankar | None | Review README "API Documentation"; edit it and log changes in section B | Not started | Both owners agree; README matches what is built |
-| Define level config format | Mudiam, Aditya | None | Format written in `levels/README.md` | Waiting for Aditya to confirm | Example level files in `levels/`; backend can load them |
+| Define level config format | Mudiam, Aditya | None | Format written in `levels/README.md`; confirmed by Aditya | Agreed; loader not built yet | Example level files in `levels/`; backend can load them |
+| Model reachable from the backend | Mudiam, Aditya | Ollama on Mudiam's laptop | Try LAN access (`OLLAMA_HOST=0.0.0.0`); fall back to running everything on Mudiam's laptop | Not started | Backend gets a real reply from `gemma4:e2b` |
 | Install Ollama and verify Gemma variant and license | Mudiam | None | Model pulled and run | Model done; license check pending | Model replies locally (done); license link added to README (pending) |
 | Write Levels 1 to 3 | Mudiam | Level config format | Written and hand-tested once | In progress (more tuning) | Level 1 beatable easily, Level 3 hard but possible |
 | `guard_reply` AI module | Mudiam | Ollama working | Implemented, unit tested, run against the real model | Completed and verified locally | Returns text; raises the two error types on failure |

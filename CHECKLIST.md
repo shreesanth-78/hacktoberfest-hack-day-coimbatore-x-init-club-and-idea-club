@@ -20,12 +20,14 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 
 - [x] Project idea chosen (Prompt Heist)
 - [x] README and role plan written
-- [ ] README, CONTEXT.md, CHECKLIST.md, .env.example pushed to GitHub
+- [x] README, CONTEXT.md, CHECKLIST.md, .env.example pushed to GitHub
 - [ ] Everyone has cloned the repo and set their Git name and email
 - [ ] `.gitignore` added (ignores `.env`, caches, build output)
 - [ ] Ollama installed on the team laptops (done on Mudiam's laptop only)
 - [x] Gemma variant chosen (`gemma4:e2b`), pulled, and confirmed to run (Mudiam's laptop)
-- [ ] Level config format agreed (written in `levels/README.md`; Aditya must confirm)
+- [x] Level config format agreed (`levels/README.md`; confirmed by Aditya)
+- [x] Backend stack chosen: FastAPI, pytest, SQLite (reasons in CONTEXT.md section D)
+- [ ] Backend can reach the model on Mudiam's laptop (LAN), or demo runs fully on Mudiam's laptop
 - [ ] API contract confirmed (backend owner and frontend owner)
 - [ ] Frontend framework chosen
 
@@ -44,6 +46,9 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 ## 4. Backend (Aditya S)
 
 - [ ] Project set up with a health check
+- [ ] Config read from env (`OLLAMA_*`, `DATABASE_PATH`, `CORS_ORIGINS`); CORS enabled for the frontend
+- [ ] Level loader reads `levels/*.json`
+- [ ] Output filter (`block_exact`) applied as in `levels/README.md`
 - [ ] Levels endpoint (no secret or prompt in the response)
 - [ ] Sessions endpoint
 - [ ] Messages endpoint calling the AI module
@@ -54,6 +59,9 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Validation and standard error format
 - [ ] Unit tests for the win check and scoring
 - [ ] Secret never appears in responses or logs
+- [ ] API tests for every endpoint and error code (400/404/409/502/504)
+- [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted
+- [ ] Backend run commands written in the README and tested
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
