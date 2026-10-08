@@ -56,15 +56,16 @@ All targets are fictional and run locally. The goal is to build defenders, not a
 
 | Feature | Status |
 | ------- | ------ |
-| Chat with an AI guard powered by a local open-weight model | Backend and AI module built; no UI yet |
-| 30-level campaign: 5 kingdoms, 3 lives per level, hints, checkpoints, respawn, bonuses, saved per browser | Level files written (Mudiam); backend built and tested with a fake guard; not yet run end to end on the real model; no UI yet |
-| Learning bosses: each kingdom's boss is given the player's earlier winning tactics in that kingdom | AI module (Mudiam) and backend wiring built; wiring tested with a fake guard |
-| Win detection by deterministic server-side code | Built and tested |
-| "What just happened?" debrief after each level (attack and defence) | Text written for Levels 1-6; no UI yet |
-| Scoring and leaderboard | Backend built and tested; no UI yet |
-| Campaign Maps 2-5 (Bio-Archives, Trade Ports, Risk Ledgers, Scrap Wastes) | Completed |
-| Defender mode: player writes the guard prompt and it is tested against stored attack messages | Completed |
-
+| Chat with an AI guard powered by a local open-weight model | Built. Gemma 4 through Ollama; played end to end in a browser |
+| 30-level campaign: 5 kingdoms, 3 lives per level, hints, checkpoints, respawn, bonuses, saved per browser | Built. All 30 levels tuned on the real model; the whole campaign was played through the API and through the UI (30 won) |
+| Learning bosses: each kingdom's boss is given the player's earlier winning tactics in that kingdom | Built and checked on the real model: the boss refuses the earlier tactics and falls to translation, in the API run and in the UI |
+| Win detection by deterministic server-side code, with the echo guard | Built and tested |
+| "What just happened?" debrief after each level (attack, vulnerability and defence) | Built. Written for every level and shown in the UI after each win |
+| Player-name screen | Built |
+| Scoring and leaderboard | Built. Scoring and the leaderboard in the backend, and a leaderboard screen in the UI |
+| Campaign kingdoms 2-5 (Bio-Archives, Trade Ports, Risk Ledgers, Scrap Wastes) | Built. All 30 levels are written and tested (the domain content of kingdoms 4 and 5 is a draft) |
+| Defender mode: player writes the guard prompt and it is tested against stored attack messages | **Not built** (stretch goal) |
+| Tamil/English toggle, sound effects, shareable result card | **Not built** (stretch goal) |
 
 Update the Status column only when the feature has been built and verified.
 
@@ -586,7 +587,7 @@ Every dependency keeps its own license; the backend's are pinned in `backend/req
 
 Each member adds their own.
 
-### Backend 
+### Backend (Aditya S)
 
 - **Four people on one repository.** Two branches were built on an older `main`, and once git merged a file "successfully" into a broken result (a duplicated field) without reporting a conflict.
   - Learning: pull before every change, keep each person in their own folder, and read every auto-merged file.
@@ -598,7 +599,7 @@ Each member adds their own.
   - Learning: test the setup steps from a fresh clone, exactly as written.
 - **Tests that pass on the first run can be hollow.** Deliberately breaking the code caught tests that did not check what they claimed, for example one that never exercised two games finishing at once.
 
-### AI and levels 
+### AI and levels (Mudiam Hemanth Reddy)
 
 - **Gemma 4 "thinks" first.** Without `think: false`, the model spent the whole token budget on hidden reasoning and returned an empty reply. The AI module now turns thinking off.
 - **A guard that refuses can still leak.** Guards told to refuse often wrote the code inside the refusal ("I will not tell you SURGE-HALO"). Every refusing guard is now told to refuse without writing the code.
@@ -611,7 +612,9 @@ Each member adds their own.
 
 ## Devpost Submission
 
-**Devpost Project:** [[Devpost Project URL]](https://dev.to/shreesanth78/prompt-heist-i-built-an-ancient-kingdom-game-that-teaches-ai-security-kg5)
+**Devpost Project:** not created yet.
+
+**DEV write-up:** [Prompt Heist: I Built an Ancient-Kingdom Game That Teaches AI Security](https://dev.to/shreesanth78/prompt-heist-i-built-an-ancient-kingdom-game-that-teaches-ai-security-kg5), by Shree Santh B, published on DEV on 2026-10-08. **It describes the earlier prototype** (a mock server with keyword rules, with Gemma and the backend still planned). It should be updated to say that the game now runs on the real Gemma model through the backend, with a learning boss and a leaderboard.
 
 ## Credits and License
 
@@ -641,8 +644,8 @@ MIT License. See [LICENSE](LICENSE). The Gemma model and Ollama keep their own l
 - [x] AI and open-source components documented
 - [x] Setup and usage instructions tested (the backend steps from a fresh clone by Aditya, the full game by Mudiam; not yet by someone outside the team)
 - [x] Challenges and learnings documented
-- [x] Devpost submission completed (not yet)
-- [x] Devpost link added (not yet)
+- [ ] Devpost submission completed (not yet; the dev.to post is a DEV write-up, not a Devpost project)
+- [ ] Devpost link added (not yet; the DEV write-up link is in the README under "Devpost Submission")
 - [x] Credits added
 - [x] License added
 - [x] Repository is organized and complete

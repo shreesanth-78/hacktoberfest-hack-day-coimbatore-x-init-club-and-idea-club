@@ -107,4 +107,4 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Submitted through OrganizerHQ before the deadline
 - [ ] Best Open-Source AI Project selected in the submission
 - [ ] Gemma 4 box ticked in the submission
-- [ ] Optional: DEV Challenges write-up published
+- [x] Optional: DEV Challenges write-up published (by Shree: dev.to post of 2026-10-08, linked in the README; it describes the earlier mock-server prototype and should be updated)
