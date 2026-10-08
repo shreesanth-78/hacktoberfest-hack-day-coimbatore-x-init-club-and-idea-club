@@ -171,6 +171,15 @@ The frontend should show a friendly message for 502 and 504 and let the player r
 
 Returns `200 {"status": "ok"}`.
 
+### `GET /api/health/ai`
+
+Whether the guard can answer. It does not call the model.
+
+- Ready: `200 {"status": "ok", "mode": "stub" | "ollama", "model": "gemma4:e2b" | null, "host": "string" | null}`.
+- Not ready: `503` with code `ai_not_ready` and the reason, for example that Ollama cannot be reached or the model is not pulled.
+
+The frontend can use it to show a "guard offline" notice.
+
 ### `GET /api/levels`
 
 Returns the list of levels. Never includes the secret or the guard prompt.
@@ -336,7 +345,7 @@ The owners of each component must replace this section with tested install comma
 
 ## Environment Variables
 
-Documented in [.env.example](.env.example). Copy it to `.env` and edit. **Never commit `.env`**, and never put real secrets in the example file. No variable here is currently a secret, because Ollama runs locally without a key.
+Documented in [.env.example](.env.example). Copy it to `.env` in the repository root and edit it; the backend loads it on startup, and variables set in the shell take priority. **Never commit `.env`**, and never put real secrets in the example file. No variable here is currently a secret, because Ollama runs locally without a key.
 
 | Variable | Used by | Purpose |
 | -------- | ------- | ------- |
@@ -356,6 +365,9 @@ The frontend does not exist yet. The real backend is in `backend/` (setup and co
 ```bash
 # Real backend, from the repository root (GUARD_STUB=1 runs it without a model)
 GUARD_STUB=1 uvicorn backend.app.main:create_app --factory --port 8000   # docs at http://localhost:8000/docs
+
+# End-to-end check of the running backend (with the real model on the AI owner's laptop)
+python backend/scripts/e2e_check.py
 ```
 
 AI tools by the AI owner (verified on Windows with an NVIDIA RTX 4060 laptop GPU):

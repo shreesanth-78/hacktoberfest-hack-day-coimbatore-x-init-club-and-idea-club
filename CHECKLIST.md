@@ -65,6 +65,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Backend run commands written in the README and tested
 - [x] Campaign support: map and checkpoint fields, checkpoint restart, hint, echo guard, secret-leak checks on opening, hint and debrief
 - [x] Per-browser progress: players, level locking, progress endpoint, campaign score, migration for older databases
+- [x] `.env` loaded on startup; `GET /api/health/ai` readiness check; `backend/scripts/e2e_check.py` end-to-end script
+- [ ] `e2e_check.py` run against the real model on Mudiam's laptop, output recorded in CONTEXT.md
 - [ ] Earlier winning messages passed to learning guards (waiting for the AI interface)
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
