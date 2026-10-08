@@ -14,7 +14,7 @@ Built for Hacktoberfest Hack Day, Coimbatore 2026 (INIT Club x iDEA Club, with M
 | ------ | ---- | ------------ |
 | Shree Santh B | Team Lead, docs and demo | [Contribution] |
 | Mudiam Hemanth Reddy | AI and level design | [Contribution] |
-| Aditya S | Backend | [Contribution] |
+| Aditya S | Backend | FastAPI backend, SQLite storage, campaign rules, integration of the AI module, tests ([details](#team-contributions)) |
 | Kirupashankar Chockkanathan | Frontend | [Contribution] |
 
 Detailed task lists per role: [docs/ROLES.md](docs/ROLES.md). Shared change log and integration checklist: [CONTEXT.md](CONTEXT.md).
@@ -357,21 +357,37 @@ LICENSE      Open-source license (required for submission)
 
 ## Installation and Setup
 
-Commands for the application cannot be written until the code exists. What is known today:
+Prerequisites:
+
+- Git
+- Python 3.10 or newer (tested with 3.12)
+- To play against the real guard: [Ollama](https://ollama.com) with the model pulled, `ollama pull gemma4:e2b` (about 4.6 GB). Without it, the backend runs with canned "stub" replies.
+- Node.js, if the frontend uses it (frontend owner to confirm)
+
+Backend setup, tested from a fresh clone on Linux:
 
 ```bash
 git clone https://github.com/shreesanth-78/hacktoberfest-hack-day-coimbatore-x-init-club-and-idea-club.git
 cd hacktoberfest-hack-day-coimbatore-x-init-club-and-idea-club
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+cp .env.example .env               # then edit .env (see below)
+python -m pytest                   # all tests; no model needed
 ```
 
-Planned prerequisites (to be confirmed and versioned by each owner):
+On Windows PowerShell, use these in place of the venv, activate and copy lines:
 
-- Git
-- [Ollama](https://ollama.com) with the model pulled: `ollama pull gemma4:e2b` (about 4.6 GB)
-- Python 3 (the AI module and tools need no extra packages; the backend needs `pip install -r backend/requirements.txt`, see [backend/README.md](backend/README.md))
-- Node.js, if the frontend uses it
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1          # if scripts are blocked: Set-ExecutionPolicy -Scope Process Bypass
+copy .env.example .env
+```
 
-The owners of each component must replace this section with tested install commands before submission.
+In `.env`:
+
+- **Without a model:** uncomment `GUARD_STUB=1`.
+- **With the real guard:** leave it commented, keep `OLLAMA_MODEL=gemma4:e2b`, and make sure Ollama is running.
 
 ## Environment Variables
 
@@ -390,15 +406,18 @@ The secret code words live in the server-side level config, never in frontend co
 
 ## Running the Project
 
-The frontend does not exist yet. The real backend is in `backend/` (setup and commands: [backend/README.md](backend/README.md)):
+The frontend does not exist in the repository yet. Backend, from the repository root, with the virtual environment active (details: [backend/README.md](backend/README.md)):
 
 ```bash
-# Real backend, from the repository root (GUARD_STUB=1 runs it without a model)
-GUARD_STUB=1 uvicorn backend.app.main:create_app --factory --port 8000   # docs at http://localhost:8000/docs
+uvicorn backend.app.main:create_app --factory --port 8000
+# API docs to try every endpoint: http://localhost:8000/docs
+# Is the guard ready?             http://localhost:8000/api/health/ai
 
-# End-to-end check of the running backend (with the real model on the AI owner's laptop)
-python backend/scripts/e2e_check.py
+# In a second terminal: play every attack and a campaign through the API
+python backend/scripts/e2e_check.py --levels 6 --trials 3
 ```
+
+**Demo with the frontend on another laptop.** Start the backend with `--host 0.0.0.0`, so it accepts connections from the network. Add the frontend's address to `CORS_ORIGINS` in `.env`, for example `CORS_ORIGINS=http://<frontend-ip>:5173,http://localhost:5173`. Point the frontend at `http://<backend-ip>:8000`. This was tested on a local network with the stub guard. Venue Wi-Fi can block laptop-to-laptop traffic, so running everything on one laptop is the safest demo.
 
 AI tools by the AI owner (verified on Windows with an NVIDIA RTX 4060 laptop GPU):
 
@@ -489,13 +508,38 @@ Prompt Heist is a training game with fictional targets that run locally. Only pr
 
 ## Implementation During the Hackathon
 
-[To be filled in with what was actually built during the Hack Day.]
+Each member adds their own part. Everything below was built during the Hack Day; see the Git history and pull requests #1-#7.
+
+### Backend (Aditya S)
+
+- **FastAPI backend** (`backend/`) implementing the API contract: levels, free-play sessions, messages, leaderboard, and a readiness check that reports whether the guard can answer and why not.
+- **SQLite storage** with automatic upgrades for older database files. All SQL is in one file (`backend/app/db.py`).
+- **Game rules in code, not in the model:**
+  - win detection, including the echo guard from the AI owner
+  - the output filter
+  - scoring
+  - hints
+  - a failed AI call never costs a life
+- **30-level campaign** (`backend/app/campaign.py`), saved per browser:
+  - checkpoints and respawn
+  - checkpoint and kingdom bonuses
+  - completion and a campaign leaderboard
+  - **learning bosses**, which receive the player's kept winning tactics from their own kingdom
+- **Safety checks:**
+  - the cipher, guard prompt and hint never leave the server
+  - the loader rejects level files whose opening, hint or debrief contain the cipher
+  - campaign changes are applied in one transaction, and only if the campaign has not moved on
+- **Integration:**
+  - merged the AI owner's level and AI-module branches into the backend twice (PRs #4 and #7)
+  - `.env` loading
+  - an end-to-end script that plays attacks and a full campaign through the HTTP API
+- **Tests:** 126 backend tests (pytest) in `backend/tests/`, run with fake guards. Key rules were also checked by deliberately breaking them and confirming that tests fail.
 
 ### Team Contributions
 
 - **Shree Santh B:** [Contribution]
 - **Mudiam Hemanth Reddy:** [Contribution]
-- **Aditya S:** [Contribution]
+- **Aditya S:** backend design and implementation (FastAPI, SQLite, campaign rules, learning-boss wiring), integration of the AI module and level files, backend tests and the end-to-end check script, and backend documentation. PRs #1-#7.
 - **Kirupashankar Chockkanathan:** [Contribution]
 
 ## Working Application
@@ -524,7 +568,19 @@ Prompt Heist is a training game with fictional targets that run locally. Only pr
 
 ## Challenges and Learnings
 
-[To be filled in during and after the Hack Day.]
+Each member adds their own.
+
+### Backend (Aditya S)
+
+- **Four people on one repository.** Two branches were built on an older `main`, and once git merged a file "successfully" into a broken result (a duplicated field) without reporting a conflict.
+  - Learning: pull before every change, keep each person in their own folder, and read every auto-merged file.
+- **The model is unpredictable, so the rules cannot live in it.** Wins, lives, checkpoints and scores are decided in code and covered by tests. That keeps the game fair even when the guard behaves differently from one try to the next.
+- **A spec can hide exploits.** A running campaign total would let a player farm points by winning a level and losing the next one again and again.
+  - The fix: each level counts once, at its best score.
+  - The AI owner caught a similar hole, the "echo" win, where the player types the cipher and the guard repeats it.
+- **Documented is not the same as working.** The README told people to use a `.env` file that nothing read.
+  - Learning: test the setup steps from a fresh clone, exactly as written.
+- **Tests that pass on the first run can be hollow.** Deliberately breaking the code caught tests that did not check what they claimed, for example one that never exercised two games finishing at once.
 
 ## Devpost Submission
 

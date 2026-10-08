@@ -30,7 +30,9 @@ OLLAMA_MODEL=gemma4:e2b uvicorn backend.app.main:create_app --factory --port 800
 
 If Ollama runs on another laptop on the same network, add `OLLAMA_HOST=http://<that-laptop-ip>:11434`. On that laptop, Ollama must be started with `OLLAMA_HOST=0.0.0.0` so it accepts network connections.
 
-On Windows PowerShell, set variables first, for example `$env:GUARD_STUB="1"`, then run `uvicorn ...`.
+On Windows PowerShell, set variables first, for example `$env:GUARD_STUB="1"`, then run `uvicorn ...`. Or put them in `.env`.
+
+For a frontend on another laptop, add `--host 0.0.0.0`, and add that laptop's address to `CORS_ORIGINS` in `.env`, for example `http://192.168.1.20:5173`. This was tested on a local network.
 
 API docs, where you can try every endpoint: http://localhost:8000/docs
 
