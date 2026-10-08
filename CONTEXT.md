@@ -8,7 +8,7 @@ Rule for this file: record only what is true. Use `Not specified` when unknown. 
 
 ## A. Project Context
 
-**Overview.** Prompt Heist is a browser game. The player chats with an AI "guard" that protects a fictional secret and tries to make it reveal the secret. A debrief then explains the technique and the defence. Goal: teach prompt-injection concepts safely, with a local open-weight model. Full description: [README.md](README.md).
+**Overview.** Prompt Heist is a browser game with a Training map (Levels 1-3) and a campaign, *Silicon Bastion* (Map 1 = Levels 4-6, with guard interrogations, 3 strikes and checkpoints; design in `docs/GAME_DESIGN.md`). The player chats with an AI "guard" that protects a fictional secret and tries to make it reveal the secret. A debrief then explains the technique and the defence. Goal: teach prompt-injection concepts safely, with a local open-weight model. Full description: [README.md](README.md).
 
 **Current state (verified from the repository):** documentation, the AI module (`ai/guard.py`), level files, tests, a temporary stand-in server (`tools/dev_server.py`), and the real backend (`backend/`, FastAPI and SQLite). There is no frontend yet.
 
@@ -53,7 +53,8 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 | Date | Contributor | Component | Changes Made | Files Modified | Dependencies or Impact | Status |
 | ---- | ----------- | --------- | ------------ | -------------- | ---------------------- | ------ |
-| 2026-10-08 | Aditya S | Backend | Built the FastAPI backend implementing the full README API contract: SQLite storage (sessions, messages), level loader with validation, filter/win/score rules, standard errors, CORS, per-session lock. 62 pytest tests; all 80 tests in the repo pass. Manually run with `GUARD_STUB=1`. Extended `.gitignore` (`.env`, `.venv/`, `__pycache__/`, `*.db`) | `backend/*`, `.gitignore`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New deps in `backend/requirements.txt`: fastapi, uvicorn, pytest, httpx2. Contract unchanged. Frontend can switch from `tools/dev_server.py` to the real backend (same port and paths). Not yet run against the real model | In PR #2 |
+| 2026-10-08 | Aditya S | Game design / Backend / Levels | Adopted the Silicon Bastion campaign from the team's game plan. Added Map 1 as Levels 4-6 (new files; Levels 1-3 untouched, now map 0 "Training"). Backend: optional level fields `map`, `map_title`, `checkpoint`, `opening`; checkpoint restart (`restart_level_id`); opening line sent to the model as the guard's first message; loader rejects openings or debriefs that contain the secret. 100 tests pass (82 backend + 18 AI) | `docs/GAME_DESIGN.md`, `levels/level_4-6.json`, `levels/README.md`, `backend/app/*`, `backend/tests/*`, `README.md`, `CONTEXT.md`, `CHECKLIST.md`, `.gitignore` | **API change, additive only:** `/api/levels` items gain `map`, `map_title`, `checkpoint`, `opening`; message responses gain `restart_level_id`. Nothing removed or renamed. Levels 4-6 not yet tested on the real model | In PR #3 |
+| 2026-10-08 | Aditya S | Backend | Built the FastAPI backend implementing the full README API contract: SQLite storage (sessions, messages), level loader with validation, filter/win/score rules, standard errors, CORS, per-session lock. 62 pytest tests; all 80 tests in the repo pass. Manually run with `GUARD_STUB=1`. Extended `.gitignore` (`.env`, `.venv/`, `__pycache__/`, `*.db`) | `backend/*`, `.gitignore`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New deps in `backend/requirements.txt`: fastapi, uvicorn, pytest, httpx2. Contract unchanged. Frontend can switch from `tools/dev_server.py` to the real backend (same port and paths). Not yet run against the real model | Merged (PR #2) |
 | 2026-10-08 | Aditya S | Docs / Backend plan | Reviewed Mudiam's AI module, level format and stand-in server (all 18 tests pass on Aditya's machine). Confirmed the level format and the filter/win rules. Recorded backend decisions: FastAPI, pytest, SQLite. Added the backend layout and the plan for running the model on Mudiam's laptop | `CONTEXT.md`, `CHECKLIST.md` | No code yet. Backend will import `ai.guard` unchanged and lives only in `backend/` | Merged (PR #1) |
 | 2026-10-08 | Mudiam Hemanth Reddy | AI / integration | Added `guard_reply` (Ollama, `think: false`), Levels 1-3 with debriefs, `output_filter` field and win/filter rules, smoke test, TEMPORARY stand-in server implementing the API contract, 18 tests. Pulled `gemma4:e2b` and tested on the real model | `ai/guard.py`, `levels/*`, `tools/smoke_test.py`, `tools/dev_server.py`, `tests/*`, `.env.example`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New field `output_filter` in level files (Aditya must apply the rules in `levels/README.md`). Frontend can use `tools/dev_server.py` as a mock. Needs Ollama and the model on any machine that runs the real AI | Implemented and tested locally; push pending (see Git) |
 | 2026-10-08 | Mudiam Hemanth Reddy | Docs | Rewrote README for Prompt Heist (proposed stack, architecture, API contract, status); added `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | `README.md`, `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | None (no code). Defines the proposed API contract that backend and frontend must confirm | Pushed |
@@ -78,7 +79,8 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 - APIs and endpoints implemented: all of the README contract. `GET /api/health`, `GET /api/levels`, `POST /api/sessions`, `POST /api/sessions/{id}/messages`, `GET /api/leaderboard?level_id=` (`level_id` optional, top 50). Live docs at `/docs`.
 - Business logic: filter, win check and placeholder scoring in `backend/app/game.py`. Database: `backend/app/db.py`. Auth not planned.
-- Verified: 62 pytest tests pass, and a manual run with `GUARD_STUB=1` worked. **Not yet verified against the real model.**
+- Campaign support: `map`, `map_title`, `checkpoint` and `opening` level fields; `restart_level_id` when a player loses; the opening line is the guard's first history message.
+- Verified: 82 backend pytest tests pass, and manual runs with `GUARD_STUB=1` worked (including 3 strikes on Level 5 restarting at Level 4). **Not yet verified against the real model.**
 - Run: `GUARD_STUB=1 uvicorn backend.app.main:create_app --factory --port 8000` from the repo root (details in `backend/README.md`).
 - Stack (decided by the backend owner): **FastAPI**, **pytest** with FastAPI's `TestClient`, and **SQLite** through Python's built-in `sqlite3`. Reasons are in section D.
 - Uses `ai/guard.py` as is (`guard_reply`, `AIUnavailableError`, `AITimeoutError`, `GUARD_STUB=1`). The backend does not copy or edit Mudiam's files.
@@ -141,6 +143,18 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 
     Shared docs (`README.md`, `CONTEXT.md`, `CHECKLIST.md`): pull right before editing, edit only your own sections plus one change-log row, and push straight away.
 
+13. **Campaign adopted (2026-10-08, Aditya, from the team's game plan).** See `docs/GAME_DESIGN.md`.
+    - Training (Levels 1-3, Mudiam's) is kept as map 0.
+    - Map 1 *The Civic Grids* is Levels 4-6: 3 strikes per level (`max_attempts: 3`), checkpoints at 4 and 6.
+    - A strike is any message that does not win, so the rule is decided by code, not by the model.
+    - Maps 2-5 are stretch goals.
+    - The backend does not lock levels: any level can be started, and the frontend decides how to show progression.
+14. **Frontend changes from the campaign (all additive).**
+    - Show `opening` as the guard's first chat bubble.
+    - Group levels by `map_title`.
+    - Show attempts as strikes.
+    - On `lost`, offer "restart from checkpoint": start a new session for `restart_level_id`.
+
 **Known integration issues:** none observed yet, because nothing is built. Risk to watch: the frontend and backend building against different assumptions about the contract in the README.
 
 ---
@@ -153,6 +167,8 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 | Define level config format | Mudiam, Aditya | None | Format written in `levels/README.md`; confirmed by Aditya | Agreed; loader not built yet | Example level files in `levels/`; backend can load them |
 | Model reachable from the backend | Mudiam, Aditya | Ollama on Mudiam's laptop | Try LAN access (`OLLAMA_HOST=0.0.0.0`); fall back to running everything on Mudiam's laptop | Not started | Backend gets a real reply from `gemma4:e2b` |
 | Install Ollama and verify Gemma variant and license | Mudiam | None | Model pulled and run | Model done; license check pending | Model replies locally (done); license link added to README (pending) |
+| Test and tune Map 1 (Levels 4-6) on `gemma4:e2b` | Mudiam | Levels 4-6 files (done) | Run the test attacks in `docs/GAME_DESIGN.md`; adjust prompts; record real results | Not started | Each level winnable within 3 strikes with the intended technique; the failing attacks fail |
+| Frontend: maps, opening line, strikes, checkpoint restart | Kirupashankar | Additive API fields (done) | See section D, item 14 | Not started | Losing Level 5 offers a restart at Level 4 |
 | Write Levels 1 to 3 | Mudiam | Level config format | Written and hand-tested once | In progress (more tuning) | Level 1 beatable easily, Level 3 hard but possible |
 | `guard_reply` AI module | Mudiam | Ollama working | Implemented, unit tested, run against the real model | Completed and verified locally | Returns text; raises the two error types on failure |
 | Backend API | Aditya | Contract, level config, `guard_reply` | Run against the real model on Mudiam's laptop; then delete `tools/dev_server.py` (with Mudiam) | Implemented and tested with a fake guard (PR #2) | Endpoints match the contract; win check tested |

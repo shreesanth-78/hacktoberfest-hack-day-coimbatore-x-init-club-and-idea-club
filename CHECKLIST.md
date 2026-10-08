@@ -41,7 +41,10 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Debrief text for each level (technique and defence) (Levels 1-3)
 - [ ] Each level hand-tested for difficulty (first pass done; needs more)
 - [ ] Test attack messages saved for each level
-- [ ] Stretch: Levels 4 and 5
+- [ ] Stretch: Levels 4 and 5 (replaced by the campaign below)
+- [x] Map 1 level files written (Levels 4-6, from the game plan; Aditya)
+- [ ] Map 1 tested and tuned on `gemma4:e2b` with the attacks in `docs/GAME_DESIGN.md`
+- [ ] Stretch: campaign Maps 2-5
 
 ## 4. Backend (Aditya S)
 
@@ -62,6 +65,7 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] API tests for every endpoint and error code (400/404/409/502/504)
 - [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted
 - [x] Backend run commands written in the README and tested
+- [x] Campaign support: map fields, opening line in history, checkpoint restart, secret-leak checks on opening/debrief
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
@@ -72,6 +76,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Error handling and retry on AI errors
 - [ ] Debrief screen
 - [ ] Leaderboard screen
+- [ ] Levels grouped by map; guard `opening` shown as the first message; strikes shown
+- [ ] On loss, "restart from checkpoint" uses `restart_level_id`
 - [ ] Responsible-use notice before the first level
 - [ ] Readable on a laptop or projector
 

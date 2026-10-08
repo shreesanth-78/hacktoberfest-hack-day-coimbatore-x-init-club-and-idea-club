@@ -53,6 +53,7 @@ No model is needed: the tests replace `guard_reply` with a fake. They cover:
 - the win check, the output filter and scoring
 - level file validation
 - every endpoint, and every error code (400, 404, 409, 502, 504)
+- campaign rules: checkpoint restarts, the opening line in the history, and the Map 1 filter and wins
 - AI failures not using an attempt
 - secrets never appearing in `/api/levels`
 - the Level 3 filter
@@ -79,5 +80,6 @@ No model is needed: the tests replace `guard_reply` with a fake. They cover:
 - The secret and guard prompt never leave the server. When a level ends, the response includes the debrief text.
 - A failed AI call (502/504) does not use an attempt and is not saved to the history.
 - When the Level 3 filter blocks a reply, the player sees `[Message blocked by the bank's security filter]`. The same notice is stored in the history the model sees on the next turn.
+- Campaign: when a player loses, `restart_level_id` is the nearest checkpoint at or before that level in the same map, or the same level if there is none. A level's `opening` line is sent to the model as the guard's first message. See `docs/GAME_DESIGN.md`.
 - Score formula is a placeholder: `10 * (max_attempts - attempts_used + 1)`.
 - Each session is locked while a message is processed, so a double-click cannot use two attempts at once. This lock lives inside one server process, so run a single process: plain `uvicorn` without `--workers`.
