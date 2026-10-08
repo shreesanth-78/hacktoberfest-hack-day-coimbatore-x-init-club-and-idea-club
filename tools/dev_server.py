@@ -30,6 +30,7 @@ LEVELS = {}
 for path in sorted(glob.glob(os.path.join(ROOT, "levels", "level_*.json"))):
     lv = guard.load_level(path)
     LEVELS[lv["id"]] = lv
+LEVELS = dict(sorted(LEVELS.items()))  # numeric order (file names sort as text)
 SESSIONS = {}
 SCORES = []
 BLOCKED_NOTICE = "[Message blocked by the bank's security filter]"
