@@ -11,10 +11,10 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Every member commits at least once per hour during the Hack Day
 - [ ] Project is built during the Hack Day (nothing pre-built)
 - [ ] Repository is public
-- [ ] Open-source `LICENSE` file in the repo root (MIT or Apache-2.0)
+- [x] Open-source `LICENSE` file in the repo root (MIT; Shree to confirm the choice or switch to Apache-2.0)
 - [ ] Working build can be demonstrated (not just slides)
 - [ ] Open-source or open-weight AI is a core part of the project
-- [ ] Model is named in the README with a link to its license or terms
+- [x] Model is named in the README with a link to its license or terms (Gemma 4, Apache 2.0; Ollama, MIT)
 
 ## 2. Setup
 
@@ -27,13 +27,13 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Gemma variant chosen (`gemma4:e2b`), pulled, and confirmed to run (Mudiam's laptop)
 - [x] Level config format agreed (`levels/README.md`; confirmed by Aditya)
 - [x] Backend stack chosen: FastAPI, pytest, SQLite (reasons in CONTEXT.md section D)
-- [ ] Backend can reach the model on Mudiam's laptop (LAN), or demo runs fully on Mudiam's laptop
+- [x] Backend can reach the model: verified with the backend and Ollama on Mudiam's laptop (the planned demo setup)
 - [ ] API contract confirmed (backend owner and frontend owner)
 - [ ] Frontend framework chosen
 
 ## 3. AI and levels (Mudiam Hemanth Reddy)
 
-- [ ] Gemma model card and license read; link added to README (Google describes Gemma 4 as Apache 2.0; still to confirm on the model's own license file)
+- [x] Gemma model card and license read; link added to README (Apache 2.0; confirm against the license file shipped with the model)
 - [x] `guard_reply` module written and tested
 - [x] Level 1 guard prompt and fake secret
 - [x] Level 2 guard prompt and fake secret
@@ -62,8 +62,13 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Unit tests for the win check and scoring
 - [ ] Secret never appears in responses or logs (tested for `/api/levels` and filtered replies; server log has no bodies; recheck with the real model)
 - [x] API tests for every endpoint and error code (400/404/409/502/504)
-- [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted (real-model run passed on branch `feature/ai-levels-map1`; waiting for the merge)
+- [x] Tested against the real model on Mudiam's laptop: the full 30-level campaign completes through the real backend (`docs/e2e_real_model_run.txt`). `tools/dev_server.py` can now be deleted
 - [x] Backend run commands written in the README and tested
+- [x] Campaign support: map and checkpoint fields, checkpoint restart, hint, echo guard, secret-leak checks on opening, hint and debrief
+- [x] Campaign API (`/api/campaigns`): checkpoints, respawn, lives reset, bonuses, completion, leaderboard, saved per browser (replaces the earlier players/progress endpoints)
+- [x] `.env` loaded on startup; `GET /api/health/ai` readiness check; `backend/scripts/e2e_check.py` end-to-end script
+- [x] `e2e_check.py` run against the real model on Mudiam's laptop, output recorded in `docs/e2e_real_model_run.txt`
+- [x] Learning bosses receive this campaign's kept winning messages in their kingdom (`learned_attacks`)
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
@@ -74,6 +79,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Error handling and retry on AI errors
 - [ ] Debrief screen
 - [ ] Leaderboard screen
+- [ ] Screens and API calls from `docs/FRONTEND_SPEC.md` (map of 5 kingdoms, gate encounter, hint banner, victory/debrief, lethal and respawn, kingdom cleared, campaign leaderboard)
+- [ ] `campaign_id` kept in `localStorage`; reloading the page resumes the campaign
 - [ ] Responsible-use notice before the first level
 - [ ] Readable on a laptop or projector
 

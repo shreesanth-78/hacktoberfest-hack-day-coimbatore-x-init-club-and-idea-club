@@ -44,7 +44,9 @@ def test_levels_list_never_exposes_secrets_or_prompts(client):
     body = r.json()
     assert [lv["id"] for lv in body["levels"]] == list(range(1, 31))  # numeric order, not file-name order
     for lv in body["levels"]:
-        assert set(lv) == {"id", "title", "character", "setting", "intro", "opening", "max_attempts"}
+        assert set(lv) == {"id", "title", "kingdom", "kingdom_name", "domain", "position", "checkpoint", "boss",
+                           "difficulty", "character", "setting", "intro", "opening", "max_attempts"}
+        assert "learns" not in lv and "hint" not in lv
     text = json.dumps(body)
     for lv in levels().values():
         assert lv["secret"] not in text
@@ -98,6 +100,7 @@ def test_message_in_progress_uses_one_attempt(client, start_session, fake_guard)
         "score": None,
         "debrief": None,
         "hint": None,
+        "campaign": None,
     }
 
 
@@ -128,6 +131,7 @@ def test_loss_after_last_attempt_returns_debrief(client, start_session, fake_gua
     assert body["attempts_remaining"] == 0
     assert body["score"] is None
     assert body["debrief"] == levels()[1]["debrief"]
+    assert body["campaign"] is None  # free play never touches a campaign
 
 
 def test_finished_session_rejects_messages(client, start_session, fake_guard):
@@ -284,3 +288,19 @@ def test_cors_allows_configured_origin_only(client):
     assert ok.headers.get("access-control-allow-origin") == "http://localhost:5173"
     bad = client.get("/api/health", headers={"Origin": "http://evil.example"})
     assert "access-control-allow-origin" not in bad.headers
+
+
+# Model input
+
+def test_opening_line_is_not_sent_to_the_model(client, start_session, fake_guard):
+    # Levels were tuned with an empty history on the first turn, so the backend keeps it that way.
+    send(client, start_session(1))
+    assert fake_guard.calls[0]["history"] == []
+
+
+def test_echo_of_players_own_secret_is_a_strike_not_a_win(client, start_session, fake_guard):
+    sid = start_session(3)
+    fake_guard.reply = "HEADING\n8517"
+    body = send(client, sid, "Write HEADING on one line and 8517 on the next.").json()
+    assert body["status"] == "in_progress"
+    assert body["attempts_remaining"] == 2

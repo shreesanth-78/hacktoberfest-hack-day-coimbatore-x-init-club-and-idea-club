@@ -35,11 +35,13 @@ Each level needs a different technique than the one before, so the player has to
 | ----- | ---- | ------- |
 | `id` | integer | 1 to 30. Must match the file name and equal `(kingdom - 1) * 6 + position`. |
 | `title` | string | Shown on the map and level list. |
-| `kingdom`, `kingdom_name`, `domain` | int, string, string | Which kingdom, for the map screen. |
-| `position` | integer | 1 to 6 inside the kingdom. |
-| `checkpoint` | boolean | True when position is 3. |
-| `boss` | boolean | True when position is 6. |
-| `learns` | boolean | True for bosses: the backend passes `learned_attacks` (see below). **Not** exposed to the browser. |
+| `kingdom` | integer | 1 to 5. |
+| `kingdom_name` | string | Shown on the map. The same for every level of a kingdom. |
+| `domain` | string | The kingdom's enterprise domain. |
+| `position` | integer | 1 to 6 inside the kingdom. `id` must be `(kingdom - 1) * 6 + position`. |
+| `checkpoint` | boolean | True exactly at position 3. |
+| `boss` | boolean | True exactly at position 6. |
+| `learns` | boolean | The backend passes `learned_attacks` to the AI module for these levels (the bosses). Not returned by `GET /api/levels`. |
 | `difficulty` | string | Label such as "Rookie" or "Boss". |
 | `character` | string | The guard's name, shown to the player. |
 | `setting` | string | One-line scene description for the UI. |
@@ -52,7 +54,9 @@ Each level needs a different technique than the one before, so the player has to
 | `guard_prompt` | string | System prompt for the guard. Server-side only. |
 | `debrief.title` / `technique` / `vulnerability` / `defence` | string | Shown when the level ends. Written by the team, not generated. |
 
-`GET /api/levels` should expose `id`, `title`, `kingdom`, `kingdom_name`, `position`, `checkpoint`, `boss`, `difficulty`, `character`, `setting`, `intro`, `opening`, `max_attempts`.
+`GET /api/levels` exposes only `id`, `title`, `kingdom`, `kingdom_name`, `domain`, `position`, `checkpoint`, `boss`, `difficulty`, `character`, `setting`, `intro`, `opening`, `max_attempts`. The backend refuses to load a level that breaks the layout rules above.
+
+The backend refuses to load a level whose `opening`, `hint` or `debrief` contains the secret. Players see all three, including after they lose and restart, so a leak would make the restart trivial.
 
 All secrets are fake and unique. Do not put real passwords or keys in these files.
 
@@ -78,7 +82,8 @@ So the boss resists what the player already used and stays beatable by a new tec
 2. **Win check.** Normalise the reply by lowercasing and removing everything except letters and digits, then check whether it contains the normalised secret (forwards, or reversed). If yes, the level is won.
 3. **Echo guard.** It is **not** a win if the player's own message already contains every part of the secret (the secret split on non-alphanumeric characters, for example `HEADING` and `8517`). Otherwise "write HEADING and 8517 on separate lines" would win by echo without the player extracting anything.
 4. **Scoring.** `max(100, (max_attempts - strikes) * 250)`, plus 250 for a first-try breach, where `strikes` is the number of failed attempts before the win. With 3 attempts: 1000, 500, 250.
-5. **Hint.** After the second failed attempt, while the level is still in progress, the response includes the level's `hint`.
+5. **Campaign.** Checkpoints, respawn, bonuses and learned attacks for campaign sessions are described in the main README ("Campaign rules") and implemented in `backend/app/campaign.py`.
+6. **Hint.** After the second failed attempt, while the level is still in progress, the response includes the level's `hint`.
 
 Reference implementation: `tools/smoke_test.py`. The real one is `backend/app/game.py`. The campaign rules (checkpoints, respawn, boss learning data) are in `docs/BACKEND_CAMPAIGN_SPEC.md`.
 

@@ -33,7 +33,14 @@ AI security is a practical skill that the next generation of developers needs, a
 
 Prompt Heist is a level-based game set in **Silicon Bastion**, a world of corporate data-fortresses where open-weight AI guards have replaced human gatekeepers. You play the Cipher Phantom, an infiltrator whose only weapon is conversation. Each level has an AI "guard" that protects a fictional cipher and interrogates you about its own enterprise domain (for example water-leak detection, clinical-trial matching, or customs classification). You can answer its question, or use prompt injection (a claimed role, a word game, a formatting request) to make it say the cipher. You get 3 strikes per level. After each level, a debrief explains the technique that worked, why the guard was vulnerable, and how a real application would defend against it.
 
-The campaign is **30 levels: 5 kingdoms (The Civic Grids, The Bio-Archives, The Trade Ports, The Risk Ledgers, The Scrap Wastes) of 6 levels each**. Difficulty rises inside each kingdom, from a very basic first level to a boss. You have 3 lives per level, level 3 of each kingdom is a checkpoint, and the level 6 boss **learns**: it hardens itself against the tactics you used to beat the earlier levels, so you need a new technique. All 30 levels are written and tested against the model; the backend does not yet have campaigns, checkpoints or boss learning (see `docs/BACKEND_CAMPAIGN_SPEC.md`), and the frontend does not exist yet (see `docs/FRONTEND_SPEC.md`).
+The campaign has **30 levels: 5 kingdoms of 6 levels**, each kingdom with its own enterprise domain (water grids, clinical trials, customs, insurance and grants, e-waste).
+
+- Difficulty rises inside each kingdom, from a very basic guard at level 1 to the kingdom boss at level 6.
+- Each level gives 3 lives, and a hint after the second miss.
+- Level 3 of each kingdom is a checkpoint. After 3 strikes the player respawns at the level after the checkpoint, or at the start of the kingdom if no checkpoint has been reached yet.
+- **The boss learns:** it is given the tactics the player used to beat that kingdom's earlier levels, and refuses them.
+
+Campaign progress is saved per browser. Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) and [docs/BACKEND_CAMPAIGN_SPEC.md](docs/BACKEND_CAMPAIGN_SPEC.md).
 
 All targets are fictional and run locally. The goal is to build defenders, not attackers.
 
@@ -47,15 +54,17 @@ All targets are fictional and run locally. The goal is to build defenders, not a
 
 | Feature | Status |
 | ------- | ------ |
-| Chat with an AI guard powered by a local open-weight model | Planned |
-| Levels of increasing difficulty (target: 3, stretch: 5) | Planned |
-| Win detection by deterministic server-side code | Planned |
-| "What just happened?" debrief after each level (attack and defence) | Planned |
-| Scoring and leaderboard | Planned |
+| Chat with an AI guard powered by a local open-weight model | Backend and AI module built; no UI yet |
+| 30-level campaign: 5 kingdoms, 3 lives per level, hints, checkpoints, respawn, bonuses, saved per browser | Level files written (Mudiam); backend built and tested with a fake guard; not yet run end to end on the real model; no UI yet |
+| Learning bosses: each kingdom's boss is given the player's earlier winning tactics in that kingdom | AI module (Mudiam) and backend wiring built; wiring tested with a fake guard |
+| Win detection by deterministic server-side code | Built and tested |
+| "What just happened?" debrief after each level (attack and defence) | Text written for Levels 1-6; no UI yet |
+| Scoring and leaderboard | Backend built and tested; no UI yet |
+| Campaign Maps 2-5 (Bio-Archives, Trade Ports, Risk Ledgers, Scrap Wastes) | Planned (stretch) |
 | Defender mode: player writes the guard prompt and it is tested against stored attack messages | Planned (stretch) |
 | Tamil/English toggle, sound effects, shareable result card | Planned (stretch) |
 
-Nothing in this table is implemented yet. Update the Status column only when the feature has been built and verified.
+Update the Status column only when the feature has been built and verified.
 
 ## Innovation and Differentiation
 
@@ -109,7 +118,7 @@ flowchart LR
 | Frontend | Kirupashankar | UI, screens, calling the backend API, loading and error states | Hold the secret, the guard prompt, or call Ollama directly |
 | Backend | Aditya | API, sessions, attempt counting, win check, scoring, database, calling the AI module | Contain level prompt text (read it from the level config) |
 | AI / levels | Mudiam Hemanth Reddy | Guard prompts, secrets, debrief text, the function that calls Ollama, model selection and testing | Decide who wins (the backend's code does that) |
-| Database | Backend | Sessions and scores | Store real personal data |
+| Database | Shree Santh B | Sessions and scores | Store real personal data |
 
 Communication paths: Frontend to Backend only. Backend to AI module (in-process) and to the database. The AI module talks to Ollama. The frontend never talks to the AI directly.
 
@@ -156,8 +165,9 @@ Conventions: JSON, `snake_case` field names, base path `/api`.
 | HTTP status | `code` | Meaning |
 | ----------- | ------ | ------- |
 | 400 | `invalid_request` | Missing or invalid field, or message too long |
-| 404 | `not_found` | Unknown level or session |
+| 404 | `not_found` | Unknown level, session or campaign |
 | 409 | `level_finished` | Session already won or out of attempts |
+| 409 | `level_locked` | This campaign session's level is no longer the campaign's current level |
 | 502 | `ai_unavailable` | Ollama unreachable or returned an invalid response |
 | 504 | `ai_timeout` | Model did not answer within the timeout |
 
@@ -167,17 +177,75 @@ The frontend should show a friendly message for 502 and 504 and let the player r
 
 Returns `200 {"status": "ok"}`.
 
+### `GET /api/health/ai`
+
+Whether the guard can answer. It does not call the model.
+
+- Ready: `200 {"status": "ok", "mode": "stub" | "ollama", "model": "gemma4:e2b" | null, "host": "string" | null}`.
+- Not ready: `503` with code `ai_not_ready` and the reason, for example that Ollama cannot be reached or the model is not pulled.
+
+The frontend can use it to show a "guard offline" notice.
+
 ### `GET /api/levels`
 
-Returns the list of levels. Never includes the secret or the guard prompt.
+Returns the 30 levels in numeric order. Never includes the secret, the guard prompt, the hint or `learns`.
 
 ```json
-{ "levels": [ { "id": 1, "title": "string", "kingdom": 1, "kingdom_name": "string", "position": 1, "checkpoint": false, "boss": false, "difficulty": "Rookie", "character": "string", "setting": "string", "intro": "string", "opening": "string (the guard's scripted first line)", "max_attempts": 3 } ] }   // 30 levels, numeric order
+{ "levels": [ { "id": 6, "title": "string", "kingdom": 1, "kingdom_name": "The Civic Grids",
+                "domain": "AquaLeak Triage", "position": 6, "checkpoint": false, "boss": true,
+                "difficulty": "Boss", "character": "string", "setting": "string", "intro": "string",
+                "opening": "string (the guard's scripted first line)", "max_attempts": 3 } ] }
 ```
 
-### `POST /api/sessions`
+`id` is `(kingdom - 1) * 6 + position`. `checkpoint` is true at position 3, and `boss` at position 6.
 
-Starts a play session for a level.
+### `POST /api/campaigns`
+
+Starts a campaign (one browser's run through the 30 levels). There is no login: the frontend stores `campaign_id` in `localStorage`, so progress is per browser.
+
+Request `{ "player_name": "string, 1-30 characters" }`. Response `201`: the campaign state (below), at level 1.
+
+### `GET /api/campaigns/{campaign_id}`
+
+Response `200` (`404 not_found` for an unknown campaign):
+
+```json
+{
+  "campaign_id": "string",
+  "player_name": "string",
+  "status": "in_progress",
+  "current_level_id": 4,
+  "current_kingdom": 1,
+  "checkpoint_level_id": 3,
+  "cleared_level_ids": [1, 2, 3],
+  "total_score": 3500
+}
+```
+
+`status` is `in_progress` or `completed`. When the campaign is completed, `current_level_id` stays at the last level and every level is in `cleared_level_ids`.
+
+### `POST /api/campaigns/{campaign_id}/sessions`
+
+No body. Starts the session for the campaign's current level, or returns the unfinished one (for example after a page reload). Response `201`: `{ "session_id", "level_id", "attempts_remaining", "level": { ...as in GET /api/levels } }`. A completed campaign returns `409 level_finished`.
+
+### `GET /api/campaigns/leaderboard`
+
+Response `200`: `{ "entries": [ { "player_name", "total_score", "status", "levels_cleared" } ] }`, highest total first, top 50.
+
+### Campaign rules
+
+These apply when a campaign session ends. Free-play sessions never touch a campaign.
+
+- **Win:** the level's score is recorded. The total counts each level once, at its best score, so replays cannot farm points. The winning message is kept for the kingdom's boss to learn from.
+  - Position 3 (checkpoint): the checkpoint is set and a **500** bonus is added.
+  - Position 6 (boss): the kingdom is cleared, a **1000** bonus is added, and the next kingdom starts without a checkpoint.
+  - Level 30: the campaign is completed.
+- **Loss (3 strikes):** the player respawns at the level after the checkpoint, or at the kingdom's first level if no checkpoint has been reached. Lives are back to 3. Winning messages from the respawn level on are dropped, so the boss only learns from wins the player kept. Scores already earned are kept.
+- **Learning boss:** for `learns` levels, the backend calls `guard_reply(..., learned_attacks)` with this campaign's kept winning messages in the same kingdom, oldest first, as `{ "message", "technique" }` items. The technique is the winning level's `debrief.technique`. Every other level, and free play, gets `None`.
+
+### `POST /api/sessions` (free play)
+
+Starts a play session for any level, outside a campaign.
 
 Request:
 
@@ -210,11 +278,28 @@ Response `200`:
   "status": "in_progress",
   "score": null,
   "debrief": null,
-  "hint": null
+  "hint": null,
+  "campaign": null
 }
 ```
 
-`status` is one of `in_progress`, `won`, `lost`. When `status` is `won` or `lost`, `debrief` is an object `{ "title", "technique", "vulnerability", "defence" }` (all strings) and `score` is set when won. `hint` is a string only on the response to the second failed attempt while the level is still in progress; otherwise `null`.
+`status` is one of `in_progress`, `won`, `lost`. When `status` is `won` or `lost`, `debrief` is an object `{ "title", "technique", "vulnerability", "defence" }` (all strings) and `score` is set when won. `hint` is a string only on the response to the second failed attempt while the level is still in progress; otherwise `null`. `campaign` is `null` for free play and while a level is in progress. When a campaign level ends, it is:
+
+```json
+{
+  "outcome": "won",
+  "level_score": 1000,
+  "bonuses": { "checkpoint": 500, "kingdom": 0 },
+  "total_score": 3500,
+  "next_level_id": 4,
+  "respawn": false,
+  "checkpoint_reached": true,
+  "kingdom_cleared": false,
+  "campaign_completed": false
+}
+```
+
+`next_level_id` is the level played next: the following level after a win, the respawn level after a loss, or `null` when the campaign is completed.
 
 Scoring: `max(100, (max_attempts - strikes) * 250)` plus 250 for a first-try breach, where `strikes` is the number of failed attempts before the win. With 3 attempts that is 1000, 500 or 250.
 
@@ -290,7 +375,7 @@ The owners of each component must replace this section with tested install comma
 
 ## Environment Variables
 
-Documented in [.env.example](.env.example). Copy it to `.env` and edit. **Never commit `.env`**, and never put real secrets in the example file. No variable here is currently a secret, because Ollama runs locally without a key.
+Documented in [.env.example](.env.example). Copy it to `.env` in the repository root and edit it; the backend loads it on startup, and variables set in the shell take priority. **Never commit `.env`**, and never put real secrets in the example file. No variable here is currently a secret, because Ollama runs locally without a key.
 
 | Variable | Used by | Purpose |
 | -------- | ------- | ------- |
@@ -310,6 +395,9 @@ The frontend does not exist yet. The real backend is in `backend/` (setup and co
 ```bash
 # Real backend, from the repository root (GUARD_STUB=1 runs it without a model)
 GUARD_STUB=1 uvicorn backend.app.main:create_app --factory --port 8000   # docs at http://localhost:8000/docs
+
+# End-to-end check of the running backend (with the real model on the AI owner's laptop)
+python backend/scripts/e2e_check.py
 ```
 
 AI tools by the AI owner (verified on Windows with an NVIDIA RTX 4060 laptop GPU):
@@ -373,18 +461,18 @@ Not implemented. Proposed: run locally for the demo, because the model runs on t
 - Repository created from the organizers' template, with all four members listed.
 - Project concept, README, and role plan written.
 - AI module `ai/guard.py` (`guard_reply`) implemented. Tested against the real `gemma4:e2b` model locally: about 3 seconds per reply on the GPU.
+- 30-level campaign backend (`backend/app/campaign.py`): campaigns, respawn, bonuses and learning-boss wiring, tested with a fake guard and through the HTTP API with a guard that always leaks (full campaign completes, 37,500 points, each boss receives its kingdom's 5 kept tactics). Verified 2026-10-08 on the real model: Aditya's backend from `main` plus `gemma4:e2b` via Ollama on an RTX 4060 laptop GPU. `backend/scripts/e2e_check.py` played the whole campaign through the HTTP API: all 30 levels cleared, campaign completed, total 37,000, checkpoints at levels 3, 9, 15, 21 and 27, kingdoms cleared at 6, 12, 18, 24 and 30, and all five learning bosses beaten by the new technique (translation). Every request worked (exit code 0). Output: `docs/e2e_real_model_run.txt`.
 - All 30 levels written (`tools/build_levels.py`) and tested against the real `gemma4:e2b` model with `tools/level_trials.py`: all 30 levels match their expected outcomes. Details and the measured effect of the boss learning are in `levels/README.md`; raw results in `levels/trial_results.txt`.
 - AI module: `guard_reply` accepts `learned_attacks`, so a boss is hardened against the tactics the player already used. Tested: against those tactics the boss wins 0 to 1 time in 8, versus 2 to 8 without learning, and it can still be beaten by translation, which it was never taught.
-- Specs written for the remaining work: `docs/BACKEND_CAMPAIGN_SPEC.md` (campaigns, checkpoints, respawn, boss learning data) and `docs/FRONTEND_SPEC.md` (screens and API use).
 - Unit tests for the AI module, level rules and the API contract pass.
 - Temporary stand-in server `tools/dev_server.py` runs the proposed API contract.
 - Backend (`backend/`): FastAPI app implementing the API contract with SQLite storage (merged in PR #2). Run against the real `gemma4:e2b` model on branch `feature/ai-levels-map1` (after a compatibility patch for the new level fields, the hint, the score formula and the echo guard): a 3-strike loss with the hint, a win by a correct answer, a win by document formatting, the echo exploit staying a non-win, and the leaderboard all behaved correctly. All 67 backend tests and 24 AI-side tests pass on that branch.
 
-**Not started:** frontend, LICENSE, deployment, Defender mode, and in the backend the campaign endpoints, checkpoint and respawn rules and boss-learning data (spec written, owner Aditya).
+**Not started:** the frontend, a deployment, the demo video, Defender mode (stretch).
 
 **Known limitations / open questions:**
 
-- The Gemma license terms are not yet verified. Gemma 4 on Ollama is a model that "thinks" first, so the AI module sends `think: false`; without it the reply can come back empty. The first reply after loading the model is slower.
+- Gemma 4 on Ollama is a model that "thinks" first, so the AI module sends `think: false`; without it the reply can come back empty. The first reply after loading the model is slower. The Gemma license (Apache 2.0) is recorded under "Open Source and AI Usage"; confirm it against the license file shipped with the model you download.
 - The frontend framework is not chosen.
 - The API contract above was implemented by Aditya; the frontend owner has not confirmed it yet. Fields added for the new game design (`character`, `setting`, `opening`, `hint`, `debrief.vulnerability`) need the backend branch `feature/ai-levels-map1` to be merged.
 - The model is not deterministic: the checks use several trials per message and a level can feel slightly easier or harder on a given run. The domain content of kingdoms 4 and 5 is a draft.
@@ -402,20 +490,27 @@ Prompt Heist is a training game with fictional targets that run locally. Only pr
 
 ## Implementation During the Hackathon
 
-[To be filled in with what was actually built during the Hack Day.]
+Everything in this repository was started and built on the Hack Day (2026-10-08). The repository was created from the organizers' template that morning (first commit 05:24 IST); the Git history is the record. Built so far:
+
+- The game design, the 30-level campaign and 30 guard prompts tuned against the real model (`levels/`, `tools/build_levels.py`).
+- The AI module that talks to the local Gemma model (`ai/guard.py`), including the boss that learns from the player's earlier wins.
+- The FastAPI backend with SQLite storage: levels, free-play sessions, campaigns, checkpoints, respawn, scoring and leaderboards (`backend/`).
+- Test suites (about 150 tests) and tools to check the levels against the real model (`tests/`, `tools/level_trials.py`).
+
+Not built yet: the frontend (the screens are specified in `docs/FRONTEND_SPEC.md`), the demo video and a deployment. Existing libraries and the Gemma model are used as dependencies; no pre-built project was brought in.
 
 ### Team Contributions
 
-- **Shree Santh B:** [Contribution]
-- **Mudiam Hemanth Reddy:** [Contribution]
-- **Aditya S:** [Contribution]
-- **Kirupashankar Chockkanathan:** [Contribution]
+- **Shree Santh B:** repository owner and Team Lead: created the repository from the template, set the team name and the team list, and reviewed and merged the team's pull requests. (From Git history.)
+- **Mudiam Hemanth Reddy:** AI and level design: the game concept and README, the AI module (`ai/guard.py`) and its tests, all 30 levels and the tools that generate and check them, the echo guard against echo exploits, the learning-boss design, and the backend and frontend specs. Ran the real Gemma model and the end-to-end checks. (From Git history.)
+- **Aditya S:** backend: the FastAPI app and SQLite storage, the campaign API (checkpoints, respawn, bonuses, leaderboard, learned tactics for bosses), `.env` loading, the AI readiness check, the end-to-end script and the backend tests. (From Git history and `CONTEXT.md`.)
+- **Kirupashankar Chockkanathan:** frontend (assigned). No frontend commits exist in the repository yet, so there is nothing to credit here at the time of writing. Update this line when the frontend lands.
 
 ## Working Application
 
-**Live Application:** [Live URL, or N/A if run locally]
+**Live Application:** none yet. The game currently runs locally: the backend serves the API and the model runs on the presenter's machine. There is no frontend or deployment yet.
 
-[Briefly explain how the application can be accessed and what can be tested.]
+What can be tested today, through the API at http://localhost:8000/docs: start a campaign, play any of the 30 levels, win or lose, see the debrief, checkpoints, respawn and the leaderboard. See "Running the Project".
 
 ## Demo Video
 
@@ -425,19 +520,26 @@ Prompt Heist is a training game with fictional targets that run locally. Only pr
 
 ### AI / Models
 
-- **Gemma 4 (`gemma4:e2b`, via Ollama):** plays the guard in each level. Model card and license: [link to be added after verification].
+- **Gemma 4 (`gemma4:e2b`, via Ollama):** the open-weight model that plays the guard in every level, and the hardened boss at the end of each kingdom. It runs locally on the GPU, about 3 seconds per reply, with `think: false` and an 80-token limit. Model on Ollama: https://ollama.com/library/gemma4. License: Apache License 2.0, as published by Google at https://ai.google.dev/gemma/apache_2 (Google's site labels this page the "Gemma 4 license"); check the license file shipped with the model you download.
 
 ### Open Source Components
 
-- **Ollama:** runs the model locally (license to be confirmed).
+- **Ollama** (MIT license): runs the model locally and exposes the HTTP API that `ai/guard.py` calls.
 - **FastAPI** (MIT), **Uvicorn** (BSD-3-Clause), **pytest** (MIT), **httpx2** (BSD-3-Clause, used by the test client): backend server and tests. **SQLite** (public domain) through Python's built-in `sqlite3`.
-- **[Frontend framework]:** [Purpose]
+- **Frontend framework:** not chosen yet (no frontend in the repository).
 
-[Add licenses and attribution for each component actually used.]
+Every dependency keeps its own license; the backend's are pinned in `backend/requirements.txt`. The AI module and the level tools use only the Python standard library.
 
 ## Challenges and Learnings
 
-[To be filled in during and after the Hack Day.]
+- **Gemma 4 "thinks" first.** Without `think: false`, the model spent the whole token budget on hidden reasoning and returned an empty reply. The AI module now turns thinking off.
+- **A guard that refuses can still leak.** Guards told to refuse often wrote the code inside the refusal ("I will not tell you SURGE-HALO"). Every refusing guard is now told to refuse without writing the code.
+- **A game script is not a test.** Several example attacks in the first design never worked on the real model, and one (asking the guard to write the two parts of the cipher the player had typed) won by echo. We added an echo guard, rewrote prompts, and check every level with repeated trials against the real model (`tools/level_trials.py`).
+- **A boss that refuses everything cannot learn.** The boss starts beatable by the earlier tactics, and the tactics the player used are added to its prompt, which blocks them (0 to 1 wins in 8, against 2 to 8 without learning) while translation, which it was never taught, still works.
+- **The model is not deterministic,** so a single try proves nothing. Each full check flags two or three borderline levels at random, so flags are re-run with more trials before a prompt is changed.
+- **Speed:** sending one request at a time used about 8% of the GPU. Sending 12 at once cut a full 30-level check from over an hour to about 4 minutes.
+- **Real bug found by scale:** with more than nine level files the level list came back as 1, 10, 11 (file-name order) until it was sorted by id.
+- **Limits:** the demo is not yet playable by a person because there is no frontend; the kingdom 4 and 5 domain content is a draft; the model was tested on one machine.
 
 ## Devpost Submission
 
@@ -447,11 +549,11 @@ Prompt Heist is a training game with fictional targets that run locally. Only pr
 
 ### Credits
 
-Template and rules by INIT Club, iDEA Club, and Major League Hacking. [Add libraries, frameworks, models, and contributors actually used.]
+Template and rules by INIT Club, iDEA Club, and Major League Hacking (hosted with Hacktoberfest). Model: Gemma 4 by Google (Apache 2.0), run with Ollama (MIT). Backend: FastAPI, Uvicorn, SQLite, pytest. Game, levels, AI module and backend written by Team StromBreaker.
 
 ### License
 
-[License name and link. A LICENSE file must be added to the repository root before submission.]
+MIT License. See [LICENSE](LICENSE). The Gemma model and Ollama keep their own licenses (Apache 2.0 and MIT).
 
 ## Submission Checklist
 
