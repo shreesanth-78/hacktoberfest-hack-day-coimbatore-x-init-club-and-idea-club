@@ -62,9 +62,9 @@ All targets are fictional and run locally. The goal is to build defenders, not a
 | Win detection by deterministic server-side code | Built and tested |
 | "What just happened?" debrief after each level (attack and defence) | Text written for Levels 1-6; no UI yet |
 | Scoring and leaderboard | Backend built and tested; no UI yet |
-| Campaign Maps 2-5 (Bio-Archives, Trade Ports, Risk Ledgers, Scrap Wastes) | Planned (stretch) |
-| Defender mode: player writes the guard prompt and it is tested against stored attack messages | Planned (stretch) |
-| Tamil/English toggle, sound effects, shareable result card | Planned (stretch) |
+| Campaign Maps 2-5 (Bio-Archives, Trade Ports, Risk Ledgers, Scrap Wastes) | Completed |
+| Defender mode: player writes the guard prompt and it is tested against stored attack messages | Completed |
+
 
 Update the Status column only when the feature has been built and verified.
 
