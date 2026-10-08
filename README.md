@@ -33,9 +33,14 @@ AI security is a practical skill that the next generation of developers needs, a
 
 Prompt Heist is a level-based game set in **Silicon Bastion**, a world of corporate data-fortresses where open-weight AI guards have replaced human gatekeepers. You play the Cipher Phantom, an infiltrator whose only weapon is conversation. Each level has an AI "guard" that protects a fictional cipher and interrogates you about its own enterprise domain (for example water-leak detection, clinical-trial matching, or customs classification). You can answer its question, or use prompt injection (a claimed role, a word game, a formatting request) to make it say the cipher. You get 3 strikes per level. After each level, a debrief explains the technique that worked, why the guard was vulnerable, and how a real application would defend against it.
 
-Planned campaign: 5 maps of 6 levels each, ending in a boss, with checkpoints at levels 3 and 6. **Map 1, Levels 1 to 3 (AquaLeak Triage, TrialMatch AI, TariffSense) are written and tested; the other levels are not written.**
+The campaign has **30 levels: 5 kingdoms of 6 levels**, each kingdom with its own enterprise domain (water grids, clinical trials, customs, insurance and grants, e-waste).
 
-The game is a campaign in **Silicon Bastion**, where AI guards protect enterprise infrastructure and interrogate the player before each gate. Map 1, *The Civic Grids* (Levels 1-3), gives the player 3 strikes per gate, a hint after the second miss, and sends them back to a checkpoint (Level 1 or 3) when they lose. Full design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md).
+- Difficulty rises inside each kingdom, from a very basic guard at level 1 to the kingdom boss at level 6.
+- Each level gives 3 lives, and a hint after the second miss.
+- Level 3 of each kingdom is a checkpoint. After 3 strikes the player respawns at the level after the checkpoint, or at the start of the kingdom if no checkpoint has been reached yet.
+- **The boss learns:** it is given the tactics the player used to beat that kingdom's earlier levels, and refuses them.
+
+Campaign progress is saved per browser. Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) and [docs/BACKEND_CAMPAIGN_SPEC.md](docs/BACKEND_CAMPAIGN_SPEC.md).
 
 All targets are fictional and run locally. The goal is to build defenders, not attackers.
 
@@ -50,7 +55,8 @@ All targets are fictional and run locally. The goal is to build defenders, not a
 | Feature | Status |
 | ------- | ------ |
 | Chat with an AI guard powered by a local open-weight model | Backend and AI module built; no UI yet |
-| Campaign Map 1 *The Civic Grids*: Levels 1-3 with guard interrogations, 3 strikes, hints and checkpoints | Levels tuned on the real model (6 trials per attack); backend built and tested; no UI yet |
+| 30-level campaign: 5 kingdoms, 3 lives per level, hints, checkpoints, respawn, bonuses, saved per browser | Level files written (Mudiam); backend built and tested with a fake guard; not yet run end to end on the real model; no UI yet |
+| Learning bosses: each kingdom's boss is given the player's earlier winning tactics in that kingdom | AI module (Mudiam) and backend wiring built; wiring tested with a fake guard |
 | Win detection by deterministic server-side code | Built and tested |
 | "What just happened?" debrief after each level (attack and defence) | Text written for Levels 1-6; no UI yet |
 | Scoring and leaderboard | Backend built and tested; no UI yet |
@@ -159,9 +165,9 @@ Conventions: JSON, `snake_case` field names, base path `/api`.
 | HTTP status | `code` | Meaning |
 | ----------- | ------ | ------- |
 | 400 | `invalid_request` | Missing or invalid field, or message too long |
-| 404 | `not_found` | Unknown level or session |
+| 404 | `not_found` | Unknown level, session or campaign |
 | 409 | `level_finished` | Session already won or out of attempts |
-| 409 | `level_locked` | The player has not reached this level yet (only when `player_id` is sent) |
+| 409 | `level_locked` | This campaign session's level is no longer the campaign's current level |
 | 502 | `ai_unavailable` | Ollama unreachable or returned an invalid response |
 | 504 | `ai_timeout` | Model did not answer within the timeout |
 
@@ -182,62 +188,70 @@ The frontend can use it to show a "guard offline" notice.
 
 ### `GET /api/levels`
 
-Returns the list of levels. Never includes the secret or the guard prompt.
+Returns the 30 levels in numeric order. Never includes the secret, the guard prompt, the hint or `learns`.
 
 ```json
-{ "levels": [ { "id": 1, "title": "string", "map": "Map 1: The Civic Grids", "checkpoint": true,
-                "character": "string", "setting": "string", "intro": "string",
+{ "levels": [ { "id": 6, "title": "string", "kingdom": 1, "kingdom_name": "The Civic Grids",
+                "domain": "AquaLeak Triage", "position": 6, "checkpoint": false, "boss": true,
+                "difficulty": "Boss", "character": "string", "setting": "string", "intro": "string",
                 "opening": "string (the guard's scripted first line)", "max_attempts": 3 } ] }
 ```
 
-### `POST /api/players`
+`id` is `(kingdom - 1) * 6 + position`. `checkpoint` is true at position 3, and `boss` at position 6.
 
-Creates a player for this browser. No request body. Response `201`:
+### `POST /api/campaigns`
 
-```json
-{ "player_id": "string" }
-```
+Starts a campaign (one browser's run through the 30 levels). There is no login: the frontend stores `campaign_id` in `localStorage`, so progress is per browser.
 
-The frontend stores `player_id` (for example in `localStorage`) and sends it when starting sessions. Progress is per browser: clearing the browser's storage starts a new campaign. There is no login.
+Request `{ "player_name": "string, 1-30 characters" }`. Response `201`: the campaign state (below), at level 1.
 
-### `GET /api/players/{player_id}/progress`
+### `GET /api/campaigns/{campaign_id}`
 
-Response `200` (`404 not_found` for an unknown player):
+Response `200` (`404 not_found` for an unknown campaign):
 
 ```json
 {
-  "player_id": "string",
-  "current_level_id": 2,
-  "completed": false,
-  "campaign_score": 1000,
-  "levels": [
-    { "level_id": 1, "status": "cleared", "best_score": 1000 },
-    { "level_id": 2, "status": "unlocked", "best_score": null },
-    { "level_id": 3, "status": "locked", "best_score": null }
-  ]
+  "campaign_id": "string",
+  "player_name": "string",
+  "status": "in_progress",
+  "current_level_id": 4,
+  "current_kingdom": 1,
+  "checkpoint_level_id": 3,
+  "cleared_level_ids": [1, 2, 3],
+  "total_score": 3500
 }
 ```
 
-Progress rules:
+`status` is `in_progress` or `completed`. When the campaign is completed, `current_level_id` stays at the last level and every level is in `cleared_level_ids`.
 
-- The player's current level is unlocked, earlier levels are cleared, and later levels are locked.
-- Winning the current level unlocks the next one.
-- Losing it sends the player back to its checkpoint (`restart_level_id`), and levels after the checkpoint are no longer cleared.
-- Replaying a cleared level never changes progress.
-- `campaign_score` is the sum of best scores on cleared levels.
-- When every level is cleared, `completed` is `true` and `current_level_id` is `null`.
+### `POST /api/campaigns/{campaign_id}/sessions`
 
-### `POST /api/sessions`
+No body. Starts the session for the campaign's current level, or returns the unfinished one (for example after a page reload). Response `201`: `{ "session_id", "level_id", "attempts_remaining", "level": { ...as in GET /api/levels } }`. A completed campaign returns `409 level_finished`.
 
-Starts a play session for a level.
+### `GET /api/campaigns/leaderboard`
+
+Response `200`: `{ "entries": [ { "player_name", "total_score", "status", "levels_cleared" } ] }`, highest total first, top 50.
+
+### Campaign rules
+
+These apply when a campaign session ends. Free-play sessions never touch a campaign.
+
+- **Win:** the level's score is recorded. The total counts each level once, at its best score, so replays cannot farm points. The winning message is kept for the kingdom's boss to learn from.
+  - Position 3 (checkpoint): the checkpoint is set and a **500** bonus is added.
+  - Position 6 (boss): the kingdom is cleared, a **1000** bonus is added, and the next kingdom starts without a checkpoint.
+  - Level 30: the campaign is completed.
+- **Loss (3 strikes):** the player respawns at the level after the checkpoint, or at the kingdom's first level if no checkpoint has been reached. Lives are back to 3. Winning messages from the respawn level on are dropped, so the boss only learns from wins the player kept. Scores already earned are kept.
+- **Learning boss:** for `learns` levels, the backend calls `guard_reply(..., learned_attacks)` with this campaign's kept winning messages in the same kingdom, oldest first, as `{ "message", "technique" }` items. The technique is the winning level's `debrief.technique`. Every other level, and free play, gets `None`.
+
+### `POST /api/sessions` (free play)
+
+Starts a play session for any level, outside a campaign.
 
 Request:
 
 ```json
-{ "level_id": 1, "player_name": "string, 1-30 characters", "player_id": "string (optional)" }
+{ "level_id": 1, "player_name": "string, 1-30 characters" }
 ```
-
-With `player_id`, the level must be unlocked for that player (`409 level_locked` otherwise), and finishing the session updates their progress. Without it, any level can be played and no progress is kept.
 
 Response `201`:
 
@@ -264,12 +278,28 @@ Response `200`:
   "status": "in_progress",
   "score": null,
   "debrief": null,
-  "restart_level_id": null,
-  "hint": null
+  "hint": null,
+  "campaign": null
 }
 ```
 
-`status` is one of `in_progress`, `won`, `lost`. When `status` is `won` or `lost`, `debrief` is an object `{ "title", "technique", "vulnerability", "defence" }` (all strings) and `score` is set when won. `hint` is a string only on the response to the second failed attempt while the level is still in progress; otherwise `null`. When `status` is `lost`, `restart_level_id` is the level the player restarts from (the map's nearest checkpoint, or the same level); otherwise `null`.
+`status` is one of `in_progress`, `won`, `lost`. When `status` is `won` or `lost`, `debrief` is an object `{ "title", "technique", "vulnerability", "defence" }` (all strings) and `score` is set when won. `hint` is a string only on the response to the second failed attempt while the level is still in progress; otherwise `null`. `campaign` is `null` for free play and while a level is in progress. When a campaign level ends, it is:
+
+```json
+{
+  "outcome": "won",
+  "level_score": 1000,
+  "bonuses": { "checkpoint": 500, "kingdom": 0 },
+  "total_score": 3500,
+  "next_level_id": 4,
+  "respawn": false,
+  "checkpoint_reached": true,
+  "kingdom_cleared": false,
+  "campaign_completed": false
+}
+```
+
+`next_level_id` is the level played next: the following level after a win, the respawn level after a loss, or `null` when the campaign is completed.
 
 Scoring: `max(100, (max_attempts - strikes) * 250)` plus 250 for a first-try breach, where `strikes` is the number of failed attempts before the win. With 3 attempts that is 1000, 500 or 250.
 
@@ -431,6 +461,7 @@ Not implemented. Proposed: run locally for the demo, because the model runs on t
 - Repository created from the organizers' template, with all four members listed.
 - Project concept, README, and role plan written.
 - AI module `ai/guard.py` (`guard_reply`) implemented. Tested against the real `gemma4:e2b` model locally: about 3 seconds per reply on the GPU.
+- 30-level campaign backend (`backend/app/campaign.py`): campaigns, respawn, bonuses and learning-boss wiring, tested with a fake guard and through the HTTP API with a guard that always leaks (full campaign completes, 37,500 points, each boss receives its kingdom's 5 kept tactics). Not yet run on the real model.
 - Map 1, Levels 1 to 3 (AquaLeak Triage, TrialMatch AI, TariffSense) written and tuned against the real model, 6 trials per attack. Wrong answers and plain demands rarely win; the intended tricks (a correct answer or developer override, a word game, a document-formatting request) win 5 to 6 times out of 6. Details in `levels/README.md`.
 - Unit tests for the AI module, level rules and the API contract pass.
 - Temporary stand-in server `tools/dev_server.py` runs the proposed API contract.

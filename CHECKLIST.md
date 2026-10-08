@@ -41,7 +41,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [x] Debrief text for each level (technique, vulnerability, defence) (Levels 1-3)
 - [x] Each level tested for difficulty against the real model, 6 trials per attack (Levels 1-3; see `levels/README.md`)
 - [x] Test attack messages saved for each level (`levels/attacks.json`, run with `tools/level_trials.py`)
-- [x] Map 1 checkpoints set (Levels 1 and 3)
+- [x] 30 level files (5 kingdoms x 6) with checkpoints at position 3 and learning bosses at position 6 (`tools/build_levels.py`)
+- [ ] All 5 kingdoms tuned on the real model with `tools/level_trials.py` (results recorded in `levels/README.md`)
 - [ ] Levels 4 to 30 (maps 2 to 5, bosses; the new design plans 30 levels)
 
 ## 4. Backend (Aditya S)
@@ -64,10 +65,10 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Tested against the real model on Mudiam's laptop; `tools/dev_server.py` can then be deleted (real-model run passed on branch `feature/ai-levels-map1`; waiting for the merge)
 - [x] Backend run commands written in the README and tested
 - [x] Campaign support: map and checkpoint fields, checkpoint restart, hint, echo guard, secret-leak checks on opening, hint and debrief
-- [x] Per-browser progress: players, level locking, progress endpoint, campaign score, migration for older databases
+- [x] Campaign API (`/api/campaigns`): checkpoints, respawn, lives reset, bonuses, completion, leaderboard, saved per browser (replaces the earlier players/progress endpoints)
 - [x] `.env` loaded on startup; `GET /api/health/ai` readiness check; `backend/scripts/e2e_check.py` end-to-end script
 - [ ] `e2e_check.py` run against the real model on Mudiam's laptop, output recorded in CONTEXT.md
-- [ ] Earlier winning messages passed to learning guards (waiting for the AI interface)
+- [x] Learning bosses receive this campaign's kept winning messages in their kingdom (`learned_attacks`)
 
 ## 5. Frontend (Kirupashankar Chockkanathan)
 
@@ -78,9 +79,8 @@ Team-wide to-do list for Prompt Heist. Tick an item only when it is done and ver
 - [ ] Error handling and retry on AI errors
 - [ ] Debrief screen
 - [ ] Leaderboard screen
-- [ ] Levels grouped by `map`; guard `character`, `setting` and `opening` shown before the first message; strikes shown; `hint` shown when present
-- [ ] On loss, "restart from checkpoint" uses `restart_level_id`
-- [ ] `player_id` from `POST /api/players` kept in `localStorage` and sent with sessions; map screen built from the progress endpoint
+- [ ] Screens and API calls from `docs/FRONTEND_SPEC.md` (map of 5 kingdoms, gate encounter, hint banner, victory/debrief, lethal and respawn, kingdom cleared, campaign leaderboard)
+- [ ] `campaign_id` kept in `localStorage`; reloading the page resumes the campaign
 - [ ] Responsible-use notice before the first level
 - [ ] Readable on a laptop or projector
 

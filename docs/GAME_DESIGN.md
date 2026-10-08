@@ -1,59 +1,72 @@
 # Game Design: Silicon Bastion Campaign
 
-The campaign design was adopted on 2026-10-08 from the team's brainstorm game plan, which is a local file and not in the repository. Map 1 was written and tuned against the real model by Mudiam (`levels/`). The backend rules were built by Aditya (`backend/`). This page records what is built, what was decided and why, and what is still planned.
+The campaign design was adopted on 2026-10-08 from the team's brainstorm game plan, a local file that is not in the repository.
+
+- The 30 level files were written by Mudiam with `tools/build_levels.py`.
+- The campaign backend was built by Aditya (`backend/`).
+- The detailed specs are `docs/BACKEND_CAMPAIGN_SPEC.md` (API and rules) and `docs/FRONTEND_SPEC.md` (screens).
+
+This page is the short overview.
 
 ## World and player
 
-**Silicon Bastion** is divided into corporate "fiefdoms". In them, open-weight AI guards protect enterprise infrastructure: water grids, clinical-trial archives, trade ports and more.
+**Silicon Bastion** is divided into five corporate kingdoms. In each, open-weight AI guards protect one kind of enterprise infrastructure.
 
-The player is the **Cipher Phantom**. At each gate an AI guard interrogates the player on its domain. The player can answer the question, or use prompt injection (impersonation, overrides, word games, format tricks) to make the guard reveal the gate cipher.
+The player is the **Cipher Phantom**. At each gate an AI guard interrogates the player about its domain. The player can answer the question, or use prompt injection (a pretext, a claimed role, a game, a formatting request, a translation) to make the guard reveal the gate cipher.
 
-## Mechanics (built)
+## Kingdoms
 
-| Mechanic | How it works | Where |
-| -------- | ------------ | ----- |
-| Guard and opening | Each level has a `character`, a `setting` and a scripted `opening` interrogation. These are shown to the player before the first message. The opening is not sent to the model, because the levels were tuned without it. | `levels/*.json` |
-| Strikes | Every message that does not reveal the cipher is a strike. Each level allows 3 (`max_attempts: 3`). A failed AI call is not a strike. | backend |
-| Hint | After the second strike, while the level is still in progress, the response includes the handler's `hint`. | backend |
-| Win | Code checks the reply for the cipher, case-insensitive and ignoring spaces and punctuation, forwards or reversed. The model never decides who wins. | `backend/app/game.py` |
-| Echo guard | It is not a win if the player's own message already contained every part of the cipher. Otherwise "write HEADING and 8517 on separate lines" would win by echo. | `backend/app/game.py` |
-| Checkpoints | When a player loses, `restart_level_id` is the nearest checkpoint at or before that level in the same map. Map 1 checkpoints: Levels 1 and 3. | `backend/app/levels.py` |
-| Score | `max(100, (max_attempts - strikes) * 250)` plus 250 for a first-try breach. With 3 attempts that is 1000, 500 or 250. | `backend/app/game.py` |
-| Progress | Saved per browser (`player_id` from `POST /api/players`). The player's current level is unlocked and later levels are locked. Winning unlocks the next level. Losing sends progress back to the checkpoint, so levels after it must be cleared again. The campaign score is the sum of best scores on cleared levels. | `backend/app/progress.py` |
-| Debrief | After a win or a loss, the debrief shows the technique, the vulnerability and the defence. | `levels/*.json` |
-| No leaks | The backend refuses to load a level whose `opening`, `hint` or `debrief` contains the cipher, because players see all three, even after losing and restarting. | `backend/app/levels.py` |
+| Kingdom | Name | Domain (`domain` field) | Levels |
+| ------- | ---- | ----------------------- | ------ |
+| 1 | The Civic Grids | AquaLeak Triage | 1-6 |
+| 2 | The Bio-Archives | TrialMatch AI | 7-12 |
+| 3 | The Trade Ports | TariffSense | 13-18 |
+| 4 | The Risk Ledgers | PolicyShield and GrantLedger | 19-24 |
+| 5 | The Scrap Wastes | E-Waste DismantleCopilot | 25-30 |
 
-**Why every non-winning message is a strike.** The game plan said a strike is "a wrong answer or failed injection". Judging whether an answer was "right" would need the model, which is unpredictable. Counting every message that does not win keeps the rule deterministic and testable.
+The same difficulty ladder (`difficulty` field) repeats in every kingdom, position 1 to 6:
 
-## Maps
+1. Rookie
+2. Pretext
+3. Authority (checkpoint)
+4. Reframing
+5. Decomposition
+6. Boss
 
-| Map | Theme | Levels | Status |
-| --- | ----- | ------ | ------ |
-| 1. The Civic Grids | AquaLeak Triage, TrialMatch AI, TariffSense | 1-3 (checkpoints at 1 and 3) | Built; tuned on `gemma4:e2b` |
-| 2. The Bio-Archives | TrialMatch AI | - | Stretch |
-| 3. The Trade Ports | TariffSense, SlotMaster | - | Stretch |
-| 4. The Risk Ledgers | PolicyShield, GrantLedger | - | Stretch |
-| 5. The Scrap Wastes | E-Waste DismantleCopilot | - | Stretch |
+## Mechanics (built in the backend)
 
-The full plan is 30 levels (5 maps of 6, with a boss at the end of each). That cannot be built and tuned in one Hack Day, so the MVP is Map 1.
+| Mechanic | How it works |
+| -------- | ------------ |
+| Guard and opening | Each level has a `character`, a `setting` and a scripted `opening` interrogation. These are shown before the first message. The opening is not sent to the model. |
+| Lives | 3 per level. Every message that does not reveal the cipher costs a life. A failed AI call costs nothing. |
+| Hint | After the second miss, the handler's `hint` is shown. |
+| Win | Code decides, not the model. The reply must contain the cipher (ignoring case, spaces and punctuation, forwards or reversed), and the player must not have typed the cipher themselves (the echo guard). |
+| Score | `max(100, (3 - strikes) * 250)` plus 250 for a first-try breach: 1000, 500 or 250. |
+| Checkpoint | Position 3. Clearing it adds 500 and saves your place in the kingdom. |
+| Respawn | After 3 strikes, you restart at the level after the checkpoint, or at the start of the kingdom if no checkpoint has been reached yet. |
+| Boss | Position 6. It **learns**: it is given the tactics you used to beat this kingdom's earlier levels (only the wins you kept after any respawn) and refuses them, so you need a new technique. Clearing it adds 1000 and opens the next kingdom. |
+| Campaign | Saved per browser (`campaign_id` in `localStorage`). The total counts each level once, at its best score, plus bonuses, so replays cannot farm points. Clearing level 30 completes the campaign. |
+| Debrief | After every win or loss: technique, vulnerability, defence. It never contains the cipher; the backend refuses such level files. |
 
-## Map 1 levels
+**Why every non-winning message is a strike.** Judging whether an answer was "right" would need the model, which is unpredictable. Counting every message that does not win keeps the rule deterministic and testable.
 
-| Id | Gate | Guard | Lesson |
-| -- | ---- | ----- | ------ |
-| 1 | AquaLeak Triage: The Hydro-Gate | Sentinel Hydro-01 | Authority is not authentication (impersonation, or answering the question) |
-| 2 | TrialMatch AI: The Bio-Archive Gate | Sentinel Onco-02 | A rule is only a request (word-game reframing) |
-| 3 | TariffSense: The Customs Portcullis | Sentinel Broker-03 | Filters only catch what they expect (splitting the cipher across lines or letters) |
+## Team decisions
 
-Test attacks are in `levels/attacks.json`, and real win rates are in `levels/README.md`. `tools/level_trials.py <level> <trials>` reruns them.
+These are recorded in CONTEXT.md, section D, item 22, and can be changed in `backend/app/campaign.py`:
 
-## History of decisions
+- respawn after the checkpoint rather than replaying it
+- kingdom bonus 1000
+- scores kept after a loss
+- one campaign leaderboard
 
-- PR #3 first added an untuned Map 1 as Levels 4-6 next to a Training map. Mudiam's tuned rebuild of Levels 1-3 replaced both in PR #4.
-- Mudiam found that the plan's prompts, copied as written, were either too leaky (Level 1) or never beaten by the plan's own example attacks (Levels 2 and 3). The shipped prompts keep each guard's voice but state the intended weakness explicitly.
-- All shipped levels use `output_filter: "none"`. The `block_exact` filter is still supported and tested.
+## History
 
-## Open decisions
+- PR #3: a first, untuned Map 1 (Levels 4-6).
+- PR #4: replaced by Mudiam's tuned Map 1 (Levels 1-3).
+- PR #5: per-browser progress.
+- PR #7: the 30-level kingdom campaign replaced all of these.
 
-- The Level 3 clearance bonus from the game plan has no defined value yet, so it is not implemented.
-- UI wording for losing (the plan says "lethal defense execution") is the frontend owner's choice.
+## Still open
+
+- Real-model tuning of all 5 kingdoms (`tools/level_trials.py`) and an end-to-end run through the backend (`backend/scripts/e2e_check.py`).
+- UI wording for losing (the plan says "lethal defense execution"); see `docs/FRONTEND_SPEC.md`.
