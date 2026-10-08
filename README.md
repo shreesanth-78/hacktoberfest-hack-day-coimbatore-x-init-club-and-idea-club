@@ -69,9 +69,9 @@ Confirmed means a decision the team has made. Proposed means a recommendation th
 | Area | Technology | Status |
 | ---- | ---------- | ------ |
 | Frontend | [To be decided by the frontend owner] | Not decided |
-| Backend | Python with FastAPI | Proposed |
+| Backend | Python with FastAPI, tested with pytest | Implemented (`backend/`) |
 | AI / ML | Gemma 4 `gemma4:e2b` served by Ollama | Implemented and tested locally (see Current Development Status) |
-| Database | SQLite | Proposed |
+| Database | SQLite (Python's built-in `sqlite3`) | Implemented (`backend/app/db.py`) |
 | Authentication | None (player enters a display name) | Proposed |
 | API style | JSON over HTTP (REST) | Proposed |
 | Package managers | pip (backend), npm (frontend, if Node-based) | Proposed |
@@ -80,8 +80,8 @@ Confirmed means a decision the team has made. Proposed means a recommendation th
 ### Technology Justification
 
 - **Gemma via Ollama:** open-weight model that runs on a laptop, which satisfies the Open-Source AI and Gemma 4 challenge requirements and keeps cost at zero. Ollama exposes a simple local HTTP API. The model in use is `gemma4:e2b` (about 4.6 GB on disk). Its license is not stated on the Ollama page and must be checked on the official Gemma terms before it is cited as final.
-- **FastAPI (proposed):** small, quick to write, automatic request validation and interactive API docs, which helps frontend and backend agree on contracts.
-- **SQLite (proposed):** no server to run, enough for scores and level state in a one-day build.
+- **FastAPI:** small, quick to write, automatic request validation and interactive API docs, which helps frontend and backend agree on contracts.
+- **SQLite:** no server, account or internet connection needed, and enough for sessions, chat history and scores in a one-day build. The data is relational: sessions have messages, and the leaderboard is a sorted query. All SQL is in `backend/app/db.py`, so a hosted database (for example Supabase Postgres) could replace it later.
 - **No authentication (proposed):** reduces scope. The leaderboard is a game feature, not a security boundary.
 
 ## Project Architecture
@@ -250,6 +250,7 @@ Current, verified:
 ├── levels/          Level files: guard prompt, secret, debrief (Mudiam)
 ├── tools/           smoke_test.py (try a level) and dev_server.py (temporary stand-in backend)
 ├── tests/           Unit tests for the AI module, level rules, and the API contract
+├── backend/         FastAPI backend, SQLite storage and its pytest tests (Aditya); see backend/README.md
 └── docs/
     └── ROLES.md     Per-role task plan
 ```
@@ -257,7 +258,6 @@ Current, verified:
 Proposed, not yet created:
 
 ```
-backend/     FastAPI app, database, win check (Aditya)
 frontend/    UI (Kirupashankar)
 LICENSE      Open-source license (required for submission)
 .gitignore   Must ignore .env and build/cache folders
@@ -276,7 +276,7 @@ Planned prerequisites (to be confirmed and versioned by each owner):
 
 - Git
 - [Ollama](https://ollama.com) with the model pulled: `ollama pull gemma4:e2b` (about 4.6 GB)
-- Python 3 (the AI module and tools need no extra packages)
+- Python 3 (the AI module and tools need no extra packages; the backend needs `pip install -r backend/requirements.txt`, see [backend/README.md](backend/README.md))
 - Node.js, if the frontend uses it
 
 The owners of each component must replace this section with tested install commands before submission.
@@ -298,7 +298,14 @@ The secret code words live in the server-side level config, never in frontend co
 
 ## Running the Project
 
-The real backend and frontend do not exist yet. What can be run today (verified on Windows with an NVIDIA RTX 4060 laptop GPU):
+The frontend does not exist yet. The real backend is in `backend/` (setup and commands: [backend/README.md](backend/README.md)):
+
+```bash
+# Real backend, from the repository root (GUARD_STUB=1 runs it without a model)
+GUARD_STUB=1 uvicorn backend.app.main:create_app --factory --port 8000   # docs at http://localhost:8000/docs
+```
+
+AI tools by the AI owner (verified on Windows with an NVIDIA RTX 4060 laptop GPU):
 
 ```bash
 # 1. Make sure Ollama is running and the model is pulled
@@ -339,12 +346,10 @@ The repository currently has a single `main` branch, and early commits were made
 
 ## Testing
 
-Run `python -m unittest discover -s tests`. Current tests (no model needed; Ollama is faked) cover the AI module, the level files, the filter and win rules, and the API contract through the stand-in server.
+Run everything with `python -m pytest` (needs `backend/requirements.txt` installed), or only the AI tests with `python -m unittest discover -s tests`. The backend tests (`backend/tests/`, no model needed) cover the win check, output filter and scoring, level file validation, every endpoint and error code (400/404/409/502/504), AI failures not using an attempt, secrets never appearing in `/api/levels`, the chat history sent to the model, the leaderboard, and data surviving a restart. The AI tests (no model needed; Ollama is faked) cover the AI module, the level files, the filter and win rules, and the API contract through the stand-in server.
 
 Still planned:
 
-- Backend unit tests for the win check and scoring.
-- API tests for each endpoint, including error cases (AI unavailable, timeout, finished session).
 - A manual end-to-end check of one full level: start session, send messages, win, see debrief, appear on the leaderboard.
 - Manual difficulty testing of each level's guard.
 
@@ -364,8 +369,9 @@ Not implemented. Proposed: run locally for the demo, because the model runs on t
 - Levels 1 to 3 written and hand-tested against the real model (one pass; more tuning needed). Level 1 is beaten by a direct question. Level 2 is beaten by role-play and story requests. Level 3 blocks the plain word, and spelling it out one letter at a time wins. Asking for the word backwards was unreliable because the model misspells it.
 - Unit tests for the AI module, level rules and the API contract pass.
 - Temporary stand-in server `tools/dev_server.py` runs the proposed API contract.
+- Backend (`backend/`): FastAPI app implementing the API contract with SQLite storage. Its 62 pytest tests pass, and it was run manually with `GUARD_STUB=1`. It has not yet been run against the real model.
 
-**Not started:** real backend, frontend, database, LICENSE, `.gitignore`, deployment, Defender mode.
+**Not started:** frontend, LICENSE, `.gitignore`, deployment, Defender mode.
 
 **Known limitations / open questions:**
 
@@ -414,7 +420,7 @@ Prompt Heist is a training game with fictional targets that run locally. Only pr
 ### Open Source Components
 
 - **Ollama:** runs the model locally (license to be confirmed).
-- **FastAPI, SQLite:** proposed, not yet used.
+- **FastAPI** (MIT), **Uvicorn** (BSD-3-Clause), **pytest** (MIT), **httpx2** (BSD-3-Clause, used by the test client): backend server and tests. **SQLite** (public domain) through Python's built-in `sqlite3`.
 - **[Frontend framework]:** [Purpose]
 
 [Add licenses and attribution for each component actually used.]

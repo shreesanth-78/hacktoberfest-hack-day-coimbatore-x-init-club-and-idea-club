@@ -10,7 +10,7 @@ Rule for this file: record only what is true. Use `Not specified` when unknown. 
 
 **Overview.** Prompt Heist is a browser game. The player chats with an AI "guard" that protects a fictional secret and tries to make it reveal the secret. A debrief then explains the technique and the defence. Goal: teach prompt-injection concepts safely, with a local open-weight model. Full description: [README.md](README.md).
 
-**Current state (verified from the repository):** documentation, the AI module (`ai/guard.py`), level files, tests, and a temporary stand-in server (`tools/dev_server.py`). There is no real backend, frontend, or database yet.
+**Current state (verified from the repository):** documentation, the AI module (`ai/guard.py`), level files, tests, a temporary stand-in server (`tools/dev_server.py`), and the real backend (`backend/`, FastAPI and SQLite). There is no frontend yet.
 
 **Planned architecture** (proposed, not implemented):
 
@@ -34,7 +34,8 @@ Frontend (browser)  --JSON/HTTP-->  Backend API  --in-process-->  AI module  --H
 | `docs/ROLES.md` | Per-role task plan | Yes |
 | `.env.example` | Proposed environment variables | Yes |
 | `ai/guard.py`, `levels/`, `tests/`, `tools/` | AI module, level files, tests, smoke test and stand-in server | Yes |
-| `backend/`, `frontend/` | Real backend and frontend | No (proposed) |
+| `backend/` | Real backend: FastAPI app, SQLite, pytest tests (see `backend/README.md`) | Yes |
+| `frontend/` | Frontend | No (proposed) |
 | `LICENSE`, `.gitignore` | Required for submission and secret safety | No |
 
 **Component relationships**
@@ -52,7 +53,8 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 | Date | Contributor | Component | Changes Made | Files Modified | Dependencies or Impact | Status |
 | ---- | ----------- | --------- | ------------ | -------------- | ---------------------- | ------ |
-| 2026-10-08 | Aditya S | Docs / Backend plan | Reviewed Mudiam's AI module, level format and stand-in server (all 18 tests pass on Aditya's machine). Confirmed the level format and the filter/win rules. Recorded backend decisions: FastAPI, pytest, SQLite. Added the backend layout and the plan for running the model on Mudiam's laptop | `CONTEXT.md`, `CHECKLIST.md` | No code yet. Backend will import `ai.guard` unchanged and lives only in `backend/` | Pushed on branch `feature/backend-api` |
+| 2026-10-08 | Aditya S | Backend | Built the FastAPI backend implementing the full README API contract: SQLite storage (sessions, messages), level loader with validation, filter/win/score rules, standard errors, CORS, per-session lock. 62 pytest tests; all 80 tests in the repo pass. Manually run with `GUARD_STUB=1`. Extended `.gitignore` (`.env`, `.venv/`, `__pycache__/`, `*.db`) | `backend/*`, `.gitignore`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New deps in `backend/requirements.txt`: fastapi, uvicorn, pytest, httpx2. Contract unchanged. Frontend can switch from `tools/dev_server.py` to the real backend (same port and paths). Not yet run against the real model | In PR #2 |
+| 2026-10-08 | Aditya S | Docs / Backend plan | Reviewed Mudiam's AI module, level format and stand-in server (all 18 tests pass on Aditya's machine). Confirmed the level format and the filter/win rules. Recorded backend decisions: FastAPI, pytest, SQLite. Added the backend layout and the plan for running the model on Mudiam's laptop | `CONTEXT.md`, `CHECKLIST.md` | No code yet. Backend will import `ai.guard` unchanged and lives only in `backend/` | Merged (PR #1) |
 | 2026-10-08 | Mudiam Hemanth Reddy | AI / integration | Added `guard_reply` (Ollama, `think: false`), Levels 1-3 with debriefs, `output_filter` field and win/filter rules, smoke test, TEMPORARY stand-in server implementing the API contract, 18 tests. Pulled `gemma4:e2b` and tested on the real model | `ai/guard.py`, `levels/*`, `tools/smoke_test.py`, `tools/dev_server.py`, `tests/*`, `.env.example`, `README.md`, `CONTEXT.md`, `CHECKLIST.md` | New field `output_filter` in level files (Aditya must apply the rules in `levels/README.md`). Frontend can use `tools/dev_server.py` as a mock. Needs Ollama and the model on any machine that runs the real AI | Implemented and tested locally; push pending (see Git) |
 | 2026-10-08 | Mudiam Hemanth Reddy | Docs | Rewrote README for Prompt Heist (proposed stack, architecture, API contract, status); added `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | `README.md`, `CONTEXT.md`, `CHECKLIST.md`, `.env.example` | None (no code). Defines the proposed API contract that backend and frontend must confirm | Pushed |
 | 2026-10-08 | Mudiam Hemanth Reddy | Docs | Added Prompt Heist README and per-role task plan | `README.md`, `docs/ROLES.md` | None | Pushed |
@@ -74,8 +76,10 @@ Newest first. History below comes from `git log`; later rows must be added by th
 
 ### Backend Development (Aditya S)
 
-- APIs and endpoints implemented: none yet.
-- Business logic, database, auth: none yet. Auth not planned.
+- APIs and endpoints implemented: all of the README contract. `GET /api/health`, `GET /api/levels`, `POST /api/sessions`, `POST /api/sessions/{id}/messages`, `GET /api/leaderboard?level_id=` (`level_id` optional, top 50). Live docs at `/docs`.
+- Business logic: filter, win check and placeholder scoring in `backend/app/game.py`. Database: `backend/app/db.py`. Auth not planned.
+- Verified: 62 pytest tests pass, and a manual run with `GUARD_STUB=1` worked. **Not yet verified against the real model.**
+- Run: `GUARD_STUB=1 uvicorn backend.app.main:create_app --factory --port 8000` from the repo root (details in `backend/README.md`).
 - Stack (decided by the backend owner): **FastAPI**, **pytest** with FastAPI's `TestClient`, and **SQLite** through Python's built-in `sqlite3`. Reasons are in section D.
 - Uses `ai/guard.py` as is (`guard_reply`, `AIUnavailableError`, `AITimeoutError`, `GUARD_STUB=1`). The backend does not copy or edit Mudiam's files.
 - Build order:
@@ -151,7 +155,7 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 | Install Ollama and verify Gemma variant and license | Mudiam | None | Model pulled and run | Model done; license check pending | Model replies locally (done); license link added to README (pending) |
 | Write Levels 1 to 3 | Mudiam | Level config format | Written and hand-tested once | In progress (more tuning) | Level 1 beatable easily, Level 3 hard but possible |
 | `guard_reply` AI module | Mudiam | Ollama working | Implemented, unit tested, run against the real model | Completed and verified locally | Returns text; raises the two error types on failure |
-| Backend API | Aditya | Contract, level config, `guard_reply` | Build endpoints, win check, scoring, SQLite | Not started | Endpoints match the contract; win check tested |
+| Backend API | Aditya | Contract, level config, `guard_reply` | Run against the real model on Mudiam's laptop; then delete `tools/dev_server.py` (with Mudiam) | Implemented and tested with a fake guard (PR #2) | Endpoints match the contract; win check tested |
 | Frontend | Kirupashankar | Contract (can use mock responses first) | Choose framework; build screens | Not started | One level playable against the backend |
 | LICENSE and `.gitignore` | Shree Santh | None | Add MIT or Apache-2.0; ignore `.env`, caches | Not started | Files in repo root |
 | Demo, Devpost, OrganizerHQ submission | Shree Santh | Working build | Record video; submit before the deadline; tick Gemma 4 | Not started | Submitted before the window closes |
@@ -163,9 +167,9 @@ No code exists, so there are no breaking changes yet. Record here any change tha
 Tick only with evidence (code merged and verified).
 
 - [ ] Frontend implementation
-- [ ] Backend implementation
+- [ ] Backend implementation (implemented and tested with a fake guard; real-model run pending)
 - [ ] AI implementation (`guard_reply` done and verified; levels still being tuned)
-- [ ] Database integration
+- [x] Database integration (SQLite; persistence across restarts tested)
 - [ ] Frontend-backend API integration
 - [ ] Backend-AI integration
 - [ ] End-to-end data flow verification
